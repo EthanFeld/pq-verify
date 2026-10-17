@@ -23,16 +23,17 @@ venv/
 # Generated datasets and reports
 /vectors/acvp/
 /vectors/shake128s/traces/
-/bench/results.csv
 /bench/predicted.csv
-/bench/hw_results.csv
-/bench/measurements.csv
-/bench/gowin_measurements.csv
-/bench/keccak_gowin_measurements.csv
-/bench/keccak_measurements.csv
-/bench/verify_cycles.csv
-/bench/stage_cycles.csv
-/bench/plots/*.svg
+/bench/*.csv
+/bench/plots/
+/bench/evidence/gowin_e*/
+/bench/evidence/gowin_rpc1/
+/bench/evidence/keccak_mapping/
+/bench/evidence/keccak_ooc_rpc*/
+/bench/evidence/gowin_c6_board_rpc1/device_scan.txt
+/bench/evidence/gowin_c6_board_rpc1/programmer_report.json
+/bench/evidence/gowin_c6_board_rpc1/programmer_sram_console.txt
+/bench/evidence/gowin_c6_board_rpc1/programmer_sram.txt
 
 # Local-only development notes
 /docs/progress.md

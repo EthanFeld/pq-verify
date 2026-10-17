@@ -5,8 +5,8 @@ module top_tn20k #(
     // Simulation bypasses the PLL and uses the 27 MHz reference clock.
     parameter integer CLKS_PER_BIT = 234
 `else
-    // 27 MHz * 11 / 8 = 37.125 MHz; 322 cycles/bit is 115.3 kbaud.
-    parameter integer CLKS_PER_BIT = 322
+    // 27 MHz * 10 / 7 = 38.571 MHz; 335 cycles/bit is 115.14 kbaud.
+    parameter integer CLKS_PER_BIT = 335
 `endif
 ) (
     input  logic       clk_27,
@@ -62,14 +62,14 @@ module top_tn20k #(
     logic pll_locked;
     logic pll_stable;
 
-    // IDIV=8, FBDIV=11, ODIV=16: 27 MHz in, 37.125 MHz out, 594 MHz VCO.
+    // IDIV=7, FBDIV=10, ODIV=16: 27 MHz in, 38.571 MHz out, 617.143 MHz VCO.
     rPLL #(
         .FCLKIN("27"),
         .DEVICE("GW2AR-18C"),
         .DYN_IDIV_SEL("false"),
-        .IDIV_SEL(7),
+        .IDIV_SEL(6),
         .DYN_FBDIV_SEL("false"),
-        .FBDIV_SEL(10),
+        .FBDIV_SEL(9),
         .DYN_ODIV_SEL("false"),
         .ODIV_SEL(16),
         .PSDA_SEL("0000"),

@@ -23,6 +23,7 @@ module tb_shake;
     shake256 #(.RPC(RPC)) dut (
         .clk(clk), .rst_n(rst_n), .in_valid(in_valid), .in_ready(in_ready),
         .in_data(in_data), .in_bytes(in_bytes), .in_last(in_last),
+        .bulk_valid(1'b0), .bulk_ready(), .bulk_lanes(640'b0), .bulk_bytes(7'b0),
         .out_valid(out_valid), .out(out), .permutation_start(permutation_start)
     );
 

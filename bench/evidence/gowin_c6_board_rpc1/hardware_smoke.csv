@@ -1,0 +1,2 @@
+tcId,mode,expected,actual,status,cycles,perms,baud,passed
+343,pure,1,1,0x00,67989,2176,115200,1

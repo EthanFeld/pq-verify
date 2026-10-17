@@ -1,0 +1,93 @@
+{
+  "variant": "c6_place1_board_rpc1",
+  "board": "Sipeed Tang Nano 20K",
+  "device": "GW2AR-18C",
+  "device_id": "0x0000081B",
+  "build_dir": "build/gowin_c6_place1_rpc1",
+  "configuration": {
+    "rpc": 1,
+    "scratch_style": 0,
+    "place_option": 1,
+    "route_option": 0,
+    "device": "GW2AR-LV18QN88C8/I7"
+  },
+  "programming_mode": "volatile SRAM",
+  "operation_index": 2,
+  "spi_flash_programmed": false,
+  "cable_index": 4,
+  "channel": 0,
+  "bitstream": "pq_verify/impl/pnr/pq_verify.fs",
+  "bitstream_sha256": "07b4830a989a5220e681666a5c10f9ea8fea7ac54981d5aa3caa3966785256a7",
+  "core_clock_mhz": 38.571,
+  "fmax_mhz": 43.212,
+  "timing_margin_pct": 10.74,
+  "programmer_exit_code": 0,
+  "programmed_at_utc": "2026-10-17T16:29:49.119021-04:00",
+  "uart": {
+    "port": "COM6",
+    "interface": "FTDI USB Serial Port channel B",
+    "baud": 115200,
+    "ping": "pass via tc343 functional smoke",
+    "post_connected_smoke": {
+      "command": "host/slhv.py --port COM6 --baud 115200 --tc 343",
+      "result": "pass",
+      "tcId": 343,
+      "cycles": 67989,
+      "permutations": 2176,
+      "result_file": "hardware_smoke.csv"
+    }
+  },
+  "functional_regression": {
+    "vector_count": 28,
+    "passed": 28,
+    "failed": 0,
+    "cycle_counted_vectors": 20,
+    "mean_core_cycles": 69191.3,
+    "estimated_mean_core_latency_us": 1793.87,
+    "acvp_vector_count": 28,
+    "acvp_passed": 28,
+    "latency_note": "Estimated from device-reported cycles and configured core clock; not external wall-clock time."
+  },
+  "generated_regression": {
+    "vector_count": 400,
+    "valid_vectors": 200,
+    "invalid_vectors": 200,
+    "passed": 400,
+    "failed": 0,
+    "mean_core_cycles": 66091.09,
+    "estimated_mean_core_latency_us": 1713.49,
+    "latency_note": "Estimated from device-reported cycles and configured core clock; not external wall-clock time."
+  },
+  "smoke_vector": {
+    "tcId": 343,
+    "expected": 1,
+    "actual": 1,
+    "cycles": 67989,
+    "permutations": 2176,
+    "passed": true
+  },
+  "vector_inputs": {
+    "acvp_path": "vectors/shake128s/sigver.json",
+    "acvp_sha256": "08e7a04614189e2634d6f0e03ad56a444c1b3da468c63245c7da37dad4dff5b0",
+    "generated_path": "vectors/shake128s/generated.json",
+    "generated_sha256": "876648a9c664cd5344c9ca67485dd3867abe782393a3228521ce92f4574439c8"
+  },
+  "per_vector_results": {
+    "acvp": "hardware_results.csv",
+    "generated": "hardware_generated_results.csv"
+  },
+  "system_simulation_parity": {
+    "cases": 428,
+    "acvp_cases": 28,
+    "generated_cases": 400,
+    "verdict_matches": 428,
+    "exact_cycle_matches": 428,
+    "exact_permutation_matches": 428,
+    "max_absolute_cycle_delta": 0,
+    "mean_absolute_cycle_delta": 0,
+    "uart_simulation_clks_per_bit": 4,
+    "uart_simulation_note": "Accelerated UART framing; verifier response counters compared per vector.",
+    "results_csv": "hardware_sim_parity.csv"
+  },
+  "verified_at_utc": "2026-10-17T22:33:45.772Z"
+}

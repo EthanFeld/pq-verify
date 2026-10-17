@@ -1,0 +1,3 @@
+# Target: cmd_ctrl
+# cmd_ctrl_crc_accepts_bad_frame: Bypass the CRC mismatch guard; expected kill: bad-CRC response assertion.
+# cmd_ctrl_busy_status_dropped: Ignore frame_busy; expected kill: busy VERIFY response assertion.

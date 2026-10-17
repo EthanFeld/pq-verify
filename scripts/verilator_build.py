@@ -9,25 +9,16 @@ from pathlib import Path
 import shutil
 import subprocess
 
+from tools import resolve_cxx, resolve_verilator, resolve_verilator_root, tool_environment
+
 
 def build_binary(root: Path, top: str, parameters: dict[str, int], sources: list[Path],
-                 directory: Path, env: dict[str, str]) -> Path:
+                 directory: Path, env: dict[str, str], defines: tuple[str, ...] = ()) -> Path:
     """Generate and compile one standalone Verilator model under directory."""
-    verilator_root = Path(env.get("VERILATOR_ROOT", r"C:\oss-cad-suite\oss-cad-suite\share\verilator"))
-    verilator = shutil.which(env.get("VERILATOR", "verilator_bin"), path=env.get("PATH"))
-    if not verilator:
-        candidate = verilator_root.parent / "bin" / "verilator_bin.exe"
-        if candidate.is_file():
-            verilator = str(candidate)
-    if not verilator or not verilator_root.is_dir():
-        raise ValueError("Verilator C++ simulator and runtime are required")
-
-    compiler = shutil.which(env.get("CXX", "g++"), path=env.get("PATH"))
-    local_gxx = Path(r"C:\msys64\mingw64\bin\g++.exe")
-    if not compiler and local_gxx.is_file():
-        compiler = str(local_gxx)
-    if not compiler:
-        raise ValueError("g++ is required to build the accelerated Verilator simulator")
+    build_env = tool_environment(env)
+    verilator = resolve_verilator(build_env)
+    verilator_root = resolve_verilator_root(build_env)
+    compiler = resolve_cxx(build_env)
 
     directory.mkdir(parents=True, exist_ok=True)
     model_dir = directory / "verilator_model"
@@ -55,9 +46,11 @@ def build_binary(root: Path, top: str, parameters: dict[str, int], sources: list
                       "version": tool_version(verilator)},
         "compiler": {"path": str(Path(compiler).resolve()),
                      "version": tool_version(compiler)},
-        "verilator_root": str(verilator_root.resolve()),
+        "verilator_root": str(verilator_root),
         "build_script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     }
+    if defines:
+        cache_data["defines"] = list(defines)
     cache_key = hashlib.sha256(json.dumps(cache_data, sort_keys=True).encode()).hexdigest()
     cache_manifest = directory / "verilator_cache.json"
     binary = model_dir / f"V{top}.exe"
@@ -73,15 +66,18 @@ def build_binary(root: Path, top: str, parameters: dict[str, int], sources: list
     if model_dir.exists():
         shutil.rmtree(model_dir)
     model_dir.mkdir(parents=True)
-    build_env = env.copy()
+    build_env = tool_environment(env)
     build_env["VERILATOR_ROOT"] = str(verilator_root)
-    local_msys_bin = Path(r"C:\msys64\mingw64\bin")
-    if local_msys_bin.is_dir():
-        build_env["PATH"] = str(local_msys_bin) + os.pathsep + build_env.get("PATH", "")
+    executable_dirs = [str(Path(compiler).resolve().parent)]
+    existing_dirs = build_env.get("PATH", "").split(os.pathsep)
+    build_env["PATH"] = os.pathsep.join(
+        executable_dirs + [directory for directory in existing_dirs if directory not in executable_dirs]
+    )
 
     command = [verilator, "--cc", "--exe", "--main", "--timing", "--top-module", top,
                "-Wno-fatal", "--Mdir", str(model_dir)]
     command.extend(f"-G{name}={value}" for name, value in parameters.items())
+    command.extend(f"-D{define}" for define in defines)
     command.extend(str(path) for path in sources)
     print(f"Generating accelerated {top} model", flush=True)
     result = subprocess.run(command, cwd=root, env=build_env, stdout=subprocess.PIPE,

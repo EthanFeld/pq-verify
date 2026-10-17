@@ -8,12 +8,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
+from tools import resolve_gowin_pack, resolve_nextpnr, resolve_sv2v, resolve_yosys, tool_environment
+
 RTL = (
     "keccak/keccak_round.sv", "keccak/keccak_f1600.sv", "keccak/shake256.sv",
     "slh/adrs.sv", "slh/sig_ram.sv", "slh/scratch_ram.sv", "slh/thash.sv",
@@ -58,22 +59,9 @@ def main() -> int:
     build = args.build_dir if args.build_dir.is_absolute() else ROOT / args.build_dir
     build.mkdir(parents=True, exist_ok=True)
     tag = f"top_tn20k_rpc{args.rpc}_scratch{args.scratch_style}"
-    env = os.environ.copy()
-    oss = Path(env.get("YOSYSHQ_ROOT", r"C:\oss-cad-suite\oss-cad-suite"))
-    if oss.is_dir():
-        env["PATH"] = os.pathsep.join((str(oss / "bin"), str(oss / "lib"), env.get("PATH", "")))
+    env = tool_environment(os.environ.copy())
     commands_used: dict[str, list[str]] = {}
     stage_seconds: dict[str, float] = {}
-
-    def tool(variable: str, default: str) -> str:
-        name = env.get(variable, default)
-        resolved = shutil.which(name, path=env.get("PATH"))
-        if resolved:
-            return resolved
-        candidate = ROOT / name
-        if candidate.is_file():
-            return str(candidate)
-        raise ValueError(f"{variable}: executable not found: {name}")
 
     def run(stage: str, command: list[str], output: Path | None = None) -> None:
         logfile = build / f"{tag}_{stage}.log"
@@ -140,13 +128,12 @@ def main() -> int:
             print(f"synthesis: reused verified outputs from {cache_path}", flush=True)
             synthesis_source = str(cache_path)
         else:
-            local_sv2v = ROOT / ".tools/sv2v/sv2v-Windows/sv2v.exe"
-            sv2v = tool("SV2V", str(local_sv2v) if local_sv2v.is_file() else "sv2v")
+            sv2v = resolve_sv2v(env)
             run("sv2v", [sv2v, "-DPQ_GOWIN_LUT4", *[str(ROOT / "rtl" / name) for name in RTL]], vfile)
             commands = (f'read_verilog "{vfile.as_posix()}"; '
                         f"chparam -set RPC {args.rpc} -set SCRATCH_STYLE {args.scratch_style} top_tn20k; "
                         f'synth_gowin -family gw2a -top top_tn20k -json "{synjson.as_posix()}"; check; stat')
-            run("yosys", [tool("YOSYS", "yosys"), "-Q", "-p", commands])
+            run("yosys", [resolve_yosys(env), "-Q", "-p", commands])
             synthesis_source = "rebuilt"
         if source_hashes() != hashes:
             raise RuntimeError("RTL or constraints changed during synthesis; rerun for current outputs")
@@ -156,13 +143,13 @@ def main() -> int:
             # The global 50.143 MHz target covers the 50.142857 MHz PLL clock
             # and conservatively constrains the 27 MHz lock/reset domain.
             # nextpnr's generic SDC reader does not accept create_generated_clock.
-            run("pnr", [tool("NEXTPNR", "nextpnr-himbaechel"), "--json", str(synjson),
+            run("pnr", [resolve_nextpnr(env), "--json", str(synjson),
                         "--device", "GW2AR-LV18QN88C8/I7", "--vopt", "family=GW2A-18C",
                         "--vopt", "cst=syn/tn20k.cst", "--freq", "50.143", "--write", str(pnrjson),
                         "--report", str(report), "--detailed-timing-report",
                         "--placer-heap-beta", str(args.placer_density), "--router", args.router])
         if args.mode == "bit":
-            run("pack", [tool("GOWIN_PACK", "gowin_pack"), "-d", "GW2AR-18C", "-o", str(bit), str(pnrjson)])
+            run("pack", [resolve_gowin_pack(env), "-d", "GW2AR-18C", "-o", str(bit), str(pnrjson)])
         if source_hashes() != hashes:
             bit.unlink(missing_ok=True)
             raise RuntimeError("RTL or constraints changed during the build; rerun for a current image")

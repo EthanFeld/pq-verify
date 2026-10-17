@@ -1,11 +1,13 @@
 `timescale 1ns/1ps
 module tb_system_uart;
-    parameter integer CLKS_PER_BIT = 4;
+    parameter integer CLKS_PER_BIT = 335;
     localparam integer MAX_FRAME_BYTES = 10000;
     localparam integer RESPONSE_TIMEOUT_CYCLES = 5000000;
 
     logic clk_27 = 1'b0;
-    always #5 clk_27 = !clk_27;
+    // SIM bypasses the PLL. Drive its effective core clock so 335 clocks/bit
+    // models the board's 38.571 MHz UART timing.
+    always #12.963 clk_27 = !clk_27;
 
     logic sim_rst_n = 1'b0;
     logic uart_rx_pin = 1'b1;
@@ -247,7 +249,7 @@ module tb_system_uart;
     end
 
     initial begin
-        #200000000;
+        #(64'd10000000 * CLKS_PER_BIT);
         $fatal(1, "tc %0d: system UART watchdog", test_id);
     end
 endmodule

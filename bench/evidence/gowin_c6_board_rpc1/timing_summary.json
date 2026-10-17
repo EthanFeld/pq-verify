@@ -1,0 +1,48 @@
+{
+  "device": "GW2AR-LV18QN88C8/I7",
+  "rpc": 1,
+  "core_clock": {
+    "constraint_mhz": 38.571,
+    "fmax_mhz": 43.212
+  },
+  "reference_clock": {
+    "constraint_mhz": 27.0,
+    "fmax_mhz": 230.64
+  },
+  "violated_endpoints": {
+    "setup": 0,
+    "hold": 0
+  },
+  "worst_setup_slack_ns": 2.784,
+  "core_clock_margin_fraction": 0.10740072202166073,
+  "resources": {
+    "logic": {
+      "used": 14504,
+      "available": 20736
+    },
+    "ff": {
+      "used": 6718,
+      "available": 15552
+    },
+    "io_ff": {
+      "used": 1,
+      "available": 198
+    },
+    "bsram": {
+      "used": 5,
+      "available": 46
+    },
+    "dsp": {
+      "used": 2,
+      "available": 24
+    },
+    "cls": {
+      "used": 8798,
+      "available": 10368
+    },
+    "ssram": {
+      "used": 0,
+      "available": null
+    }
+  }
+}

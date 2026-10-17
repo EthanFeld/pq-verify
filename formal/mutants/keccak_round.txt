@@ -1,0 +1,3 @@
+# Target: keccak_round
+# keccak_round_lut4_truth_table: Change one LUT4 parity truth-table bit; expected kill: full-state generic/LUT4 equivalence.
+# keccak_round_chi_truth_table: Change one LUT4 chi truth-table bit; expected kill: full-state generic/LUT4 equivalence.

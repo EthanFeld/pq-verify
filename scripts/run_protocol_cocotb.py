@@ -5,20 +5,23 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-import shutil
 import sys
 
 from cocotb_tools.runner import get_runner
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from scripts.run_hash_sim import tool_environment  # noqa: E402
+from scripts.tools import resolve_iverilog  # noqa: E402
 
 
 def main() -> int:
-    icarus_dir = ROOT / ".tools/iverilog/bin"
-    env = os.environ.copy()
-    env["PATH"] = str(icarus_dir) + os.pathsep + env.get("PATH", "")
-    if not shutil.which("iverilog", path=env["PATH"]):
-        print("protocol-cocotb: Icarus Verilog missing", file=sys.stderr)
+    env = tool_environment()
+    os.environ["PATH"] = env["PATH"]
+    try:
+        resolve_iverilog(env)
+    except FileNotFoundError as exc:
+        print(f"protocol-cocotb: {exc}", file=sys.stderr)
         return 2
 
     runner = get_runner("icarus")
@@ -37,7 +40,9 @@ def main() -> int:
             runner.build(
                 sources=sources,
                 hdl_toplevel="cmd_ctrl_cocotb_top",
-                parameters={"CLKS_PER_BIT": 4},
+                # A short, word-aligned signature keeps the UART protocol test
+                # focused on parser/control behavior; hardware checks use 7,856 bytes.
+                parameters={"CLKS_PER_BIT": 4, "SIG_BYTES": 16},
                 build_args=["-g2012"],
                 build_dir=build_dir,
                 always=True,

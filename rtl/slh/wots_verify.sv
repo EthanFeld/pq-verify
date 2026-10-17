@@ -12,7 +12,7 @@ module wots_verify (
     output logic          sig_rd_en,
     output logic [15:0]   sig_rd_addr,
     input  logic          sig_valid,
-    input  logic [7:0]    sig_byte,
+    input  logic [31:0]   sig_word,
     output logic          scratch_wr_en,
     output logic [7:0]    scratch_wr_addr,
     output logic [31:0]   scratch_wr_data,
@@ -67,8 +67,8 @@ module wots_verify (
     logic [31:0] hash_word;
     logic [31:0] type_word;
     logic [31:0] index_word;
-    logic [4:0] prefetch_issue_count;
-    logic [4:0] prefetch_capture_count;
+    logic [2:0] prefetch_issue_count;
+    logic [2:0] prefetch_capture_count;
     logic [5:0] prefetch_chain_number;
     logic [127:0] prefetch_sig;
     logic prefetch_issue_done;
@@ -110,7 +110,7 @@ module wots_verify (
         prefetch_sig_rd_en = (state == ST_HASH_WAIT) && (hash_index == 4'd14)
             && (chain_number < 6'd34) && !prefetch_issue_done;
         prefetch_sig_rd_addr = sig_base_reg + ({10'd0, chain_number} + 16'd1) * NODE_BYTES
-            + {12'd0, prefetch_issue_count[3:0]};
+            + {11'd0, prefetch_issue_count, 2'b00};
         sig_rd_en = ((state == ST_SIG_REQUEST) && !prefetch_hit) || prefetch_sig_rd_en;
         if (prefetch_sig_rd_en)
             sig_rd_addr = prefetch_sig_rd_addr;
@@ -122,7 +122,8 @@ module wots_verify (
         scratch_wr_addr = {chain_number, 2'b00} + {6'd0, word_index};
         scratch_wr_data = chain_node[127 - word_index * 32 -: 32];
 
-        hash_req_valid = (state == ST_HASH_REQUEST) || (state == ST_TLEN_REQUEST);
+        hash_req_valid = (state == ST_HASH_REQUEST) || (state == ST_TLEN_REQUEST)
+            || ((state == ST_HASH_WAIT) && hash_rsp_valid && (hash_index != 4'd14));
         hash_kind = 2'd0;
         hash_src_sel = 2'd3;
         hash_src_addr = 16'd0;
@@ -132,6 +133,11 @@ module wots_verify (
         chain_word = {26'd0, chain_number};
         hash_word = {28'd0, hash_index};
         index_word = 32'd0;
+
+        if ((state == ST_HASH_WAIT) && hash_rsp_valid && (hash_index != 4'd14)) begin
+            hash_pair = {hash_rsp_node, 128'd0};
+            hash_word = {28'd0, hash_index} + 32'd1;
+        end
 
         if (state == ST_TLEN_REQUEST || state == ST_TLEN_WAIT) begin
             hash_kind = 2'd3;
@@ -178,17 +184,18 @@ module wots_verify (
             prefetch_capture_pending <= prefetch_sig_rd_en;
 
             if (prefetch_sig_rd_en) begin
-                if (prefetch_issue_count == 5'd0)
+                if (prefetch_issue_count == 3'd0)
                     prefetch_chain_number <= chain_number + 6'd1;
                 prefetch_issue_count <= prefetch_issue_count + 1'b1;
-                if (prefetch_issue_count == 5'd15)
+                if (prefetch_issue_count == 3'd3)
                     prefetch_issue_done <= 1'b1;
             end
 
             if (prefetch_capture_pending && sig_valid) begin
-                prefetch_sig[127 - prefetch_capture_count * 8 -: 8] <= sig_byte;
+                prefetch_sig[127 - prefetch_capture_count * 32 -: 32]
+                    <= sig_word;
                 prefetch_capture_count <= prefetch_capture_count + 1'b1;
-                if (prefetch_capture_count == 5'd15)
+                if (prefetch_capture_count == 3'd3)
                     prefetch_valid <= 1'b1;
             end
 
@@ -214,23 +221,18 @@ module wots_verify (
 
                 ST_SIG_REQUEST: begin
                     if (prefetch_hit) begin
-                        chain_node[127 - byte_index * 8 -: 8]
-                            <= prefetch_sig[127 - byte_index * 8 -: 8];
-                        if (byte_index == 4'd15) begin
-                            byte_index <= '0;
-                            prefetch_issue_count <= '0;
-                            prefetch_capture_count <= '0;
-                            prefetch_issue_done <= 1'b0;
-                            prefetch_valid <= 1'b0;
-                            if (chain_digit == 4'd15) begin
-                                word_index <= '0;
-                                state <= ST_CHAIN_WRITE;
-                            end else begin
-                                hash_index <= chain_digit;
-                                state <= ST_HASH_REQUEST;
-                            end
+                        chain_node <= prefetch_sig;
+                        byte_index <= '0;
+                        prefetch_issue_count <= '0;
+                        prefetch_capture_count <= '0;
+                        prefetch_issue_done <= 1'b0;
+                        prefetch_valid <= 1'b0;
+                        if (chain_digit == 4'd15) begin
+                            word_index <= '0;
+                            state <= ST_CHAIN_WRITE;
                         end else begin
-                            byte_index <= byte_index + 1'b1;
+                            hash_index <= chain_digit;
+                            state <= ST_HASH_REQUEST;
                         end
                     end else begin
                         state <= ST_SIG_WAIT;
@@ -239,8 +241,8 @@ module wots_verify (
 
                 ST_SIG_WAIT: begin
                     if (sig_valid) begin
-                        chain_node[127 - byte_index * 8 -: 8] <= sig_byte;
-                        if (byte_index == 4'd15) begin
+                        chain_node[127 - byte_index * 8 -: 32] <= sig_word;
+                        if (byte_index == 4'd12) begin
                             byte_index <= '0;
                             prefetch_issue_count <= '0;
                             prefetch_capture_count <= '0;
@@ -254,7 +256,7 @@ module wots_verify (
                                 state <= ST_HASH_REQUEST;
                             end
                         end else begin
-                            byte_index <= byte_index + 1'b1;
+                            byte_index <= byte_index + 4'd4;
                             state <= ST_SIG_REQUEST;
                         end
                     end
@@ -271,6 +273,8 @@ module wots_verify (
                         if (hash_index == 4'd14) begin
                             word_index <= '0;
                             state <= ST_CHAIN_WRITE;
+                        end else if (hash_req_valid && hash_req_ready) begin
+                            hash_index <= hash_index + 1'b1;
                         end else begin
                             hash_index <= hash_index + 1'b1;
                             state <= ST_HASH_REQUEST;

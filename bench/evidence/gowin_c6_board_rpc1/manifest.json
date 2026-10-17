@@ -1,0 +1,122 @@
+{
+  "evidence_schema": 1,
+  "status": "snapshot",
+  "source_snapshot_dir": "sources",
+  "config": {
+    "rpc": 1,
+    "scratch_style": 0,
+    "place_option": 1,
+    "route_option": 0,
+    "device": "GW2AR-LV18QN88C8/I7"
+  },
+  "tools": {
+    "gowin_eda": "Gowin EDA 1.9.11.03 Education",
+    "python": "project .venv",
+    "serial": "pyserial"
+  },
+  "sources": {
+    "host/proto.py": "2c1d633094ec84a7f6bb55be049884a4a947af5911b723da0c33bd2be3876c4f",
+    "host/slhv.py": "3745146c29c6fa1accaea5a4d4cdf65ac6484aa28f9572cca29ef7bb58f001b0",
+    "model/vector_corpus.py": "18cd6d62c8e9a395382a33456c89f227c725365a175c19e06af9cca74734b0ea",
+    "rtl/io/cmd_ctrl.sv": "a5891c8709ff32601a1320ab83cc0db40d55bb974bab1eb8f15db93e48ceef13",
+    "rtl/io/crc8.sv": "de932b19d8b32a3ce90751916cefb2823df2a365078047b2bdfe0bd5cb870a0e",
+    "rtl/io/uart_rx.sv": "84eee9eb29a39c605c9e9224277b2ba01b39dfc51cabd8e815c0d347d9b67b69",
+    "rtl/io/uart_tx.sv": "334efd53ea4e6aa8cba061e327ff55e16c3d71643ce8ef268aa6237822530a7e",
+    "rtl/keccak/keccak_f1600.sv": "1dcce6097fde76bc13b74e05e8d3c7ccbc12a7b69336a9df5cd9609f773b9ade",
+    "rtl/keccak/keccak_round.sv": "ae80d7a9d3e572210f1eafe22ce2952c076a936c21f82761320896c3cb1b5940",
+    "rtl/keccak/shake256.sv": "389d9a0cbca3b557323ce06b2945fa70c0a44f22355a185c55e7fa4c9bcc6da0",
+    "rtl/pkg/slh_params_pkg.sv": "32b6202b1836125b39811e73e82dc9553255f536693dd21d0545979347c458ed",
+    "rtl/slh/adrs.sv": "bf9724cdeeb0e16e6313d00aef5c1188b5b136e9616c4b0984d44ad605acd037",
+    "rtl/slh/fors_verify.sv": "359448cb4af01bfef917948dbeb62dc5297e3fb0c64dfff3cc8174d0f1940181",
+    "rtl/slh/hmsg.sv": "bd59fc79aa4eb7da00a94fd4866e9f4cd4845e52b80490f6bf8aaaf54041d6df",
+    "rtl/slh/ht_verify.sv": "f20a21c8aabfd7d0e044310dffa611922e1aafb179d3b5ac2beeef1a952c4606",
+    "rtl/slh/scratch_ram.sv": "1e2035c7d4446840dd8060848aef06bd13a84d06e14c093891593fdc3fd2b367",
+    "rtl/slh/sig_ram.sv": "595cbf2c1e253303e11e2140b5cd2901c706301e865595871e95a785d082720b",
+    "rtl/slh/slh_verify_top.sv": "97bb9049b087c7cee83fb500be5968265d92ae11732593e1c73b8dec68569345",
+    "rtl/slh/thash.sv": "d06dda7d08d242f370521158f4b91488c6a1a3ddc31e90ae79cfc58191e4271c",
+    "rtl/slh/wots_verify.sv": "3f7d0cbc8081f527af659d72ba83929c8cce12bc67626779f4a2b77fe6a5635c",
+    "rtl/slh/xmss_verify.sv": "e5b4e85467322b07697cd7e293e79ad5f0e575887ab3edd372bdcdd5679d87ea",
+    "rtl/top/keccak_ooc_top.sv": "22af3c51be34a1d534ec3abb0e49a849986df4d4a165e75a47c979c1fb6de9ac",
+    "rtl/top/top_tn20k.sv": "16e5015602f27dfc97b5c9716afbaabdb68460897540934f2d3bbbe891efe5c5",
+    "scripts/check_hardware_sim_parity.py": "a62ecfc9edc7e6b295ae267c4adcf0d9c7a505d96819cf9dc7856d24a84cf662",
+    "scripts/gowin_build.py": "f9adc470386177db22d8e0451d8d3ef14bfb07628dc7db01405e6c88195ddecd",
+    "scripts/program_board.py": "a98667946ec5273dc04f9c12ff9273c8881fde1067e96b594ef25f6f7d69a370",
+    "scripts/run_system_sim.py": "09a8fb9b14ed13bd93be54e6e5b2dc320628033fed1f3c63e4e4b07c75720561",
+    "sim/system/tb_system_uart.sv": "bd8377df9b03b4e604101da43c64ed77f464ce27fe7682759f1681b5e8d03a1b",
+    "syn/gowin_build.tcl": "7e020091d6bee1d7bae774e23ada27e052233ffea1ff2dc593f1da40bebfb124",
+    "syn/tn20k.cst": "c2439bbbd07686ffde2b000c47956e4c4dec7358e80bdcaaf3dc5666292aec98",
+    "syn/tn20k.sdc": "67ec1d0e36e750905bcba024e4a5427be2e36aa456022e2ee4dd6e29efcc51df"
+  },
+  "rtl_sha256": "ef01ee5b3253281f4aa9c3ab09c5cc5e010ed6406c4fb462533da9e49c48babc",
+  "fit": {
+    "resources": {
+      "logic": {
+        "used": 14504,
+        "available": 20736
+      },
+      "ff": {
+        "used": 6718,
+        "available": 15552
+      },
+      "io_ff": {
+        "used": 1,
+        "available": 198
+      },
+      "bsram": {
+        "used": 5,
+        "available": 46
+      },
+      "dsp": {
+        "used": 2,
+        "available": 24
+      },
+      "cls": {
+        "used": 8798,
+        "available": 10368
+      },
+      "ssram": {
+        "used": 0,
+        "available": null
+      }
+    },
+    "clocks": {
+      "clk_27": {
+        "constraint_mhz": 27.0,
+        "fmax_mhz": 230.64
+      },
+      "core_clk": {
+        "constraint_mhz": 38.571,
+        "fmax_mhz": 43.212
+      }
+    },
+    "violated_endpoints": {
+      "setup": 0,
+      "hold": 0
+    },
+    "worst_setup_slack_ns": 2.784,
+    "core_clock_margin_fraction": 0.10740072202166073,
+    "recommended_10pct_margin": true,
+    "configuration_bitstream": {
+      "binary_bytes": 907418,
+      "expected_uncompressed_bytes": 907418,
+      "compression_requested": true,
+      "compression_enabled_in_output": false
+    }
+  },
+  "bitstream": {
+    "bytes": 907418,
+    "sha256": "07b4830a989a5220e681666a5c10f9ea8fea7ac54981d5aa3caa3966785256a7",
+    "compression_enabled": false
+  },
+  "source_build_manifest_sha256": "02b1ca93d86bfbd046a146cbbe3c845a1a31b9a03fe2b11478eb44c3f587ccbe",
+  "validation": {
+    "method": "Verilator UART-top simulation compared against device-reported results",
+    "uart_simulation_clks_per_bit": 4,
+    "cases": 428,
+    "verdict_matches": 428,
+    "exact_cycle_matches": 428,
+    "exact_permutation_matches": 428,
+    "results_csv": "hardware_sim_parity.csv",
+    "summary_json": "hardware_sim_parity.json"
+  }
+}

@@ -19,7 +19,7 @@ set_option -top_module top_tn20k
 set_option -output_base_name pq_verify
 set_option -synthesis_tool gowinsynthesis
 set_option -verilog_std v2001
-set_option -frequency 37.125
+set_option -frequency 38.571429
 set_option -timing_driven 1
 set_option -maxfan 64
 set_option -replicate_resources 1

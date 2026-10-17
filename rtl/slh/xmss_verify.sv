@@ -12,7 +12,7 @@ module xmss_verify (
     output logic          sig_rd_en,
     output logic [15:0]   sig_rd_addr,
     input  logic          sig_valid,
-    input  logic [7:0]    sig_byte,
+    input  logic [31:0]   sig_word,
     output logic          hash_req_valid,
     input  logic          hash_req_ready,
     output logic [1:0]    hash_kind,
@@ -43,7 +43,7 @@ module xmss_verify (
     logic [127:0] auth_reg;
     logic [8:0] leaf_index_reg;
     logic [3:0] level;
-    logic [3:0] sig_byte_index;
+    logic [1:0] sig_word_index;
     logic [31:0] layer_reg;
     logic [95:0] tree_reg;
     logic [15:0] sig_base_reg;
@@ -55,7 +55,7 @@ module xmss_verify (
         start_ready = (state == ST_IDLE);
         sig_rd_en = (state == ST_SIG_REQUEST);
         sig_rd_addr = sig_base_reg + WOTS_SIG_BYTES
-            + (level * NODE_BYTES) + {12'd0, sig_byte_index};
+            + (level * NODE_BYTES) + {12'd0, sig_word_index, 2'b00};
 
         hash_req_valid = (state == ST_HASH_REQUEST);
         hash_kind = 2'd1; // H
@@ -81,7 +81,7 @@ module xmss_verify (
             auth_reg <= '0;
             leaf_index_reg <= '0;
             level <= '0;
-            sig_byte_index <= '0;
+            sig_word_index <= '0;
             layer_reg <= '0;
             tree_reg <= '0;
             sig_base_reg <= '0;
@@ -100,7 +100,7 @@ module xmss_verify (
                         sig_base_reg <= sig_base;
                         seed_reg <= pk_seed;
                         level <= '0;
-                        sig_byte_index <= '0;
+                        sig_word_index <= '0;
                         auth_reg <= '0;
                         state <= ST_SIG_REQUEST;
                     end
@@ -112,12 +112,12 @@ module xmss_verify (
 
                 ST_SIG_WAIT: begin
                     if (sig_valid) begin
-                        auth_reg[127 - sig_byte_index * 8 -: 8] <= sig_byte;
-                        if (sig_byte_index == 4'd15) begin
-                            sig_byte_index <= '0;
+                        auth_reg[127 - sig_word_index * 32 -: 32] <= sig_word;
+                        if (sig_word_index == 2'd3) begin
+                            sig_word_index <= '0;
                             state <= ST_HASH_REQUEST;
                         end else begin
-                            sig_byte_index <= sig_byte_index + 1'b1;
+                            sig_word_index <= sig_word_index + 1'b1;
                             state <= ST_SIG_REQUEST;
                         end
                     end
@@ -137,7 +137,7 @@ module xmss_verify (
                             state <= ST_IDLE;
                         end else begin
                             level <= level + 1'b1;
-                            sig_byte_index <= '0;
+                            sig_word_index <= '0;
                             state <= ST_SIG_REQUEST;
                         end
                     end

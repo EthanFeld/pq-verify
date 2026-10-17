@@ -159,6 +159,7 @@ module hmsg #(
     generate
         if (SHARED_SHAKE == 0) begin : G_LOCAL_SHAKE
             logic unused_permutation_start;
+            logic unused_bulk_ready;
             shake256 #(.RPC(RPC)) u_shake256 (
                 .clk       (clk),
                 .rst_n     (rst_n),
@@ -167,6 +168,10 @@ module hmsg #(
                 .in_data   (engine_in_data),
                 .in_bytes  (engine_in_bytes),
                 .in_last   (engine_in_last),
+                .bulk_valid(1'b0),
+                .bulk_ready(unused_bulk_ready),
+                .bulk_lanes(640'b0),
+                .bulk_bytes(7'b0),
                 .out_valid (engine_out_valid),
                 .out       (engine_out),
                 .permutation_start(unused_permutation_start)

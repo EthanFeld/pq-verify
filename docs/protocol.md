@@ -2,10 +2,12 @@
 
 UART uses 8N1. Default baud is 115200; board integration may select another rate.
 All multibyte integers are little-endian unless stated otherwise.
-The board PLL produces 37.125 MHz from the 27 MHz oscillator (PLL divisors
-11/8). The board UART divisor is 322 clocks per bit, approximately 115.3 kbaud.
+The board PLL produces 38.571 MHz from the 27 MHz oscillator (PLL divisors 10/7).
+The board UART divisor is 335 clocks per bit, approximately 115.14 kbaud.
 Simulation bypasses the PLL at 27 MHz and uses a 234-cycle UART divisor for
-the same baud rate.
+the same baud rate in the small UART tests. The full-system regression instead
+drives the PLL-bypassed input at the equivalent 38.571 MHz core clock and uses
+the board's 335-cycle divisor.
 
 ## Request frame
 

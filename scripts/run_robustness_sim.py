@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
-import os
 from pathlib import Path
 import random
 import subprocess
@@ -59,9 +58,6 @@ def main() -> int:
         mutations = create_mutations(len(message), len(context), args.mutations)
 
         env = tool_environment()
-        local_msys_bin = Path(r"C:\msys64\mingw64\bin")
-        if local_msys_bin.is_dir():
-            env["PATH"] = str(local_msys_bin) + os.pathsep + env["PATH"]
         directory = ROOT / "build/sim_robust" / f"tc{args.tc}_rpc{args.rpc}"
         directory.mkdir(parents=True, exist_ok=True)
         files = {

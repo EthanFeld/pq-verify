@@ -1,0 +1,17 @@
+[options]
+mode prove
+depth 64
+multiclock on
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal -sv fv_keccak_control.sv keccak_round.sv keccak_f1600.sv
+chparam -set RPC 1 -set IN_PLACE 0 fv_keccak_control
+prep -top fv_keccak_control
+
+[files]
+fv_keccak_control.sv
+keccak_round.sv ../../rtl/keccak/keccak_round.sv
+keccak_f1600.sv ../../rtl/keccak/keccak_f1600.sv

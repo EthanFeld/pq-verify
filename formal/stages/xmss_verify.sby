@@ -1,0 +1,16 @@
+[options]
+mode bmc
+depth 640
+multiclock on
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal -sv hs_props.sv fv_xmss_verify.sv xmss_verify.sv
+prep -top fv_xmss_verify
+
+[files]
+../common/hs_props.sv
+fv_xmss_verify.sv
+../../rtl/slh/xmss_verify.sv

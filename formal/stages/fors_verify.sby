@@ -1,0 +1,16 @@
+[options]
+mode bmc
+depth 128
+multiclock on
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal -sv hs_props.sv fv_fors_verify.sv fors_verify.sv
+prep -top fv_fors_verify
+
+[files]
+../common/hs_props.sv
+fv_fors_verify.sv
+../../rtl/slh/fors_verify.sv

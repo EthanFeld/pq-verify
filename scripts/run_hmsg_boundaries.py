@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import random
 import subprocess
@@ -54,9 +53,6 @@ def main() -> int:
             cases[test_id] = (case_dir, args)
 
         env = tool_environment()
-        local_msys_bin = Path(r"C:\msys64\mingw64\bin")
-        if local_msys_bin.is_dir():
-            env["PATH"] = str(local_msys_bin) + os.pathsep + env.get("PATH", "")
         simulator = build_binary(ROOT, "tb_hmsg_boundaries",
                                  {"MSG_BYTES": 609, "CTX_BYTES": 255},
                                  [ROOT / "rtl/keccak/keccak_round.sv",

@@ -9,12 +9,14 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import sys
 import time
 
 from board_build import ROOT, RTL, source_hashes
+from tools import resolve_gw_sh, resolve_sv2v
+
+EXPECTED_UNCOMPRESSED_BYTES = 907_418
 
 
 def inspect_reports(build: Path) -> dict:
@@ -30,11 +32,12 @@ def inspect_reports(build: Path) -> dict:
     if not compression_flag:
         raise ValueError("vendor bitstream lacks its compression status header")
     binary_size = bitstream_bin.stat().st_size
-    # Gowin UG290 lists an 887 KiB maximum uncompressed configuration file for GW2AR-18.
-    max_config_bytes = 887 * 1024
-    if binary_size > max_config_bytes:
-        raise ValueError(f"binary bitstream exceeds GW2AR-18 configuration limit: "
-                         f"{binary_size}/{max_config_bytes} bytes")
+    compressed = compression_flag[1] == "ON"
+    if not compressed and binary_size != EXPECTED_UNCOMPRESSED_BYTES:
+        raise ValueError(
+            "uncompressed GW2AR-18 bitstream must be "
+            f"{EXPECTED_UNCOMPRESSED_BYTES:,} bytes; got {binary_size:,}"
+        )
 
     def resource(name: str) -> dict[str, int]:
         match = re.search(r"^\s*" + re.escape(name) + r"\s*\|\s*(\d+)/(\d+)", resources, re.M)
@@ -82,10 +85,9 @@ def inspect_reports(build: Path) -> dict:
             "recommended_10pct_margin": margin >= 0.1,
             "configuration_bitstream": {
                 "binary_bytes": binary_size,
-                "max_uncompressed_bytes": max_config_bytes,
-                "headroom_bytes": max_config_bytes - binary_size,
+                "expected_uncompressed_bytes": EXPECTED_UNCOMPRESSED_BYTES,
                 "compression_requested": bool(process_config.get("COMPRESS", False)),
-                "compression_enabled_in_output": compression_flag[1] == "ON",
+                "compression_enabled_in_output": compressed,
             }}
 
 
@@ -181,16 +183,8 @@ def main() -> int:
             return 0
         if manifest.exists() or bitstream.exists():
             raise ValueError("existing image preserved; choose a new --build-dir")
-        gowin = Path(os.environ.get("GOWIN_HOME", r"C:\Gowin\Gowin_V1.9.11.03_Education_x64"))
-        shell = gowin / "IDE/bin/gw_sh.exe"
-        if not shell.is_file():
-            raise ValueError(f"Gowin command-line tool missing: {shell}")
-        local_sv2v = ROOT / ".tools/sv2v/sv2v-Windows/sv2v.exe"
-        sv2v = os.environ.get("SV2V") or shutil.which("sv2v")
-        if not sv2v and local_sv2v.is_file():
-            sv2v = str(local_sv2v)
-        if not sv2v:
-            raise ValueError("sv2v is required")
+        shell = Path(resolve_gw_sh())
+        sv2v = resolve_sv2v()
         build.mkdir(parents=True, exist_ok=True)
         hashes = current_sources()
         (build / "source_manifest.json").write_text(json.dumps({

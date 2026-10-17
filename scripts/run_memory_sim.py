@@ -4,21 +4,22 @@
 from __future__ import annotations
 
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from scripts.run_hash_sim import run_logged, tool_environment  # noqa: E402
+from scripts.tools import resolve_iverilog, resolve_vvp  # noqa: E402
 
 
 def main() -> int:
     env = tool_environment()
-    compiler = shutil.which(env.get("IVERILOG", "iverilog"), path=env["PATH"])
-    runtime = shutil.which(env.get("VVP", "vvp"), path=env["PATH"])
-    if not compiler or not runtime:
-        print("Icarus Verilog is required", file=sys.stderr)
+    try:
+        compiler = resolve_iverilog(env)
+        runtime = resolve_vvp(env)
+    except FileNotFoundError as exc:
+        print(exc, file=sys.stderr)
         return 1
 
     directory = ROOT / "build/sim_memory"

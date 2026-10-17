@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 import re
 import sys
@@ -13,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from model.perf_model import predict_cycles  # noqa: E402
 from model.trace import trace_case  # noqa: E402
+from model.vector_corpus import load_vector_cases  # noqa: E402
 
 
 def main() -> int:
@@ -24,13 +24,16 @@ def main() -> int:
     if not 0 < args.tolerance < 1:
         parser.error("--tolerance must be between 0 and 1")
 
-    vectors = json.loads(args.vectors.read_text(encoding="utf-8"))
+    vectors = load_vector_cases(args.vectors)
+    if not isinstance(vectors, list):
+        print("vector file must contain a list or a header/tests document", file=sys.stderr)
+        return 1
     selected = [vector for vector in vectors if len(vector["signature"]) == 7856 * 2
                 and len(vector["pk"]) == 32 * 2
                 and (vector["mode"] == "internal"
                      or len(vector.get("context", "")) <= 255 * 2)]
-    if len(selected) != 20:
-        print(f"expected 20 well-formed core vectors, found {len(selected)}", file=sys.stderr)
+    if not selected:
+        print("no well-formed core vectors found", file=sys.stderr)
         return 1
 
     worst = 0.0

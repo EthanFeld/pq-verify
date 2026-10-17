@@ -108,7 +108,7 @@ async def protocol_commands_crc_length_and_busy(dut) -> None:
         STATUS_OK,
     )
 
-    signature = bytes(7856)
+    signature = bytes(16)
     assert_status(
         await transact(dut, encode_request(CMD_LOAD_SIG, signature), 3),
         CMD_LOAD_SIG,
@@ -120,6 +120,13 @@ async def protocol_commands_crc_length_and_busy(dut) -> None:
     await send_frame(dut, encode_request(CMD_PING))
     assert_status(
         await receive_response(dut, 3), CMD_PING, STATUS_BUSY
+    )
+
+    busy_verify = decode_response(
+        await transact(dut, verify, 10), CMD_VERIFY
+    )
+    assert decode_verify_response(busy_verify) == (
+        STATUS_BUSY, False, 0, 0
     )
 
     verify_receiver = cocotb.start_soon(receive_response(dut, 10))

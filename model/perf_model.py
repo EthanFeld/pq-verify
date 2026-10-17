@@ -24,15 +24,27 @@ def predict_cycles(
     overlap: bool,
     permute_overhead: int = 0,
     call_overhead: int = 14,
-    stage_overhead_cycles: int = 18_991,
+    stage_overhead_cycles: int = 18_851,
     inline_f_overhead: int = 5,
     wots_prefetch_saving: int = 16,
+    thash_response_saving: int = 1,
+    wots_chain_overlap_saving: int = 1,
+    wots_word_read_saving: int = 17,
+    thash_tk_word_read_saving: int = 621,
+    thash_tlen_word_read_saving: int = 1_518,
+    auth_word_read_saving: int = 24,
+    fors_secret_word_read_saving: int = 24,
 ) -> int:
     if rpc not in {1, 2, 3, 4, 6, 8, 12, 24}:
         raise ValueError("rpc must be one of 1, 2, 3, 4, 6, 8, 12, 24")
     if lane_bytes <= 0 or min(load_cycles, permute_overhead, call_overhead,
                                stage_overhead_cycles, inline_f_overhead,
-                               wots_prefetch_saving) < 0:
+                               wots_prefetch_saving, thash_response_saving,
+                               wots_chain_overlap_saving, wots_word_read_saving,
+                               thash_tk_word_read_saving,
+                               thash_tlen_word_read_saving,
+                               auth_word_read_saving,
+                               fors_secret_word_read_saving) < 0:
         raise ValueError("lane_bytes must be positive and cycle overheads nonnegative")
 
     records = list(records)
@@ -53,11 +65,9 @@ def predict_cycles(
                 f"trace says {permutations} permutations for {input_bytes} bytes; "
                 f"SHAKE-256 requires {expected_permutations}"
             )
-        # Both RTL front ends load their 48-byte fixed prefix as six lanes,
-        # one lane load plus one send cycle each. H_msg consumes stream bytes
-        # once and sends each completed/final lane; memory-backed thash tails
-        # pass each byte through FEED and READ_SOURCE. Inline F/H pair tails
-        # pack directly from their request register into full lanes.
+        # F/H now bulk-load their fixed prefix and register-resident pair into
+        # SHAKE in one accepted transfer. Request/control handshakes remain in
+        # per_call_overhead. H_msg and memory-backed thash keep lane streaming.
         tail_bytes = max(0, input_bytes - FIXED_HASH_PREFIX_BYTES)
         inline_pair = record.get("kind") in {"F", "H"}
         tail_cycles = math.ceil(tail_bytes / (HASH_LANE_BYTES if inline_pair else lane_bytes))
@@ -66,7 +76,7 @@ def predict_cycles(
             tail_send_cycles = math.ceil(tail_bytes / HASH_LANE_BYTES) if tail_bytes else 1
             absorb_cycles = fixed_prefix_cycles + tail_cycles + tail_send_cycles
         elif inline_pair:
-            absorb_cycles = fixed_prefix_cycles + 2 * tail_cycles
+            absorb_cycles = 1
         else:
             tail_send_cycles = math.ceil(tail_bytes / HASH_LANE_BYTES)
             absorb_cycles = fixed_prefix_cycles + 2 * tail_cycles + tail_send_cycles
@@ -86,14 +96,35 @@ def predict_cycles(
     # A WOTS chain with at least one F call can prefetch the following
     # chain's 16-byte signature while its final permutation is running.
     # The cached chain consumes one byte per cycle instead of request/wait
-    # pairs, saving 16 controller cycles. Chain 34 has no following input.
+    # pairs, saving 16 controller cycles. E3 also forwards the next F request
+    # on each same-chain response, avoiding one controller cycle per link.
+    # thash's combinational response removes one response handoff per call.
     prefetched_chains = set()
+    f_calls_by_chain: dict[str, int] = {}
+    thash_calls = 0
+    memory_word_read_savings = 0
     for record in records:
-        if record.get("event") != "hash" or record.get("kind") != "F":
+        if record.get("event") != "hash":
+            continue
+        if record.get("kind") != "Hmsg":
+            thash_calls += 1
+        if record.get("kind") != "F":
+            if record.get("kind") == "H":
+                memory_word_read_savings += auth_word_read_saving
+            elif record.get("kind") == "Tk":
+                memory_word_read_savings += thash_tk_word_read_saving
+            elif record.get("kind") == "Tlen":
+                memory_word_read_savings += thash_tlen_word_read_saving
             continue
         address = record.get("adrs_hex", "")
-        if len(address) != 64 or address[32:40] != "00000000":
+        if len(address) != 64:
             continue
+        if address[32:40] == "00000003":
+            memory_word_read_savings += fors_secret_word_read_saving
+            continue
+        if address[32:40] != "00000000":
+            continue
+        f_calls_by_chain[address[:56]] = f_calls_by_chain.get(address[:56], 0) + 1
         try:
             chain_number = int(address[48:56], 16)
         except ValueError as exc:
@@ -101,6 +132,14 @@ def predict_cycles(
         if chain_number < 34:
             prefetched_chains.add(address[:56])
     cycles -= len(prefetched_chains) * wots_prefetch_saving
+    cycles -= thash_calls * thash_response_saving
+    cycles -= sum(max(0, count - 1) for count in f_calls_by_chain.values()) * wots_chain_overlap_saving
+    # E4 packs two synchronous 32-bit RAM words into each SHAKE lane and
+    # caches each following 16-byte WOTS signature element as four words.
+    # The auth-path extension reads FORS/XMSS nodes as four words and FORS
+    # secrets likewise. These savings are measured against the validated model.
+    cycles -= memory_word_read_savings
+    cycles -= len(prefetched_chains) * wots_word_read_saving
     return cycles
 
 
@@ -139,8 +178,8 @@ def main() -> int:
     parser.add_argument("--permute-overhead", type=int, default=0)
     parser.add_argument("--call-overhead", type=int, default=14,
                         help="request/reply and controller cycles per hash call (default: 14)")
-    parser.add_argument("--stage-overhead-cycles", type=int, default=18_991,
-                        help="fixed measured verifier stage-controller overhead (default: 18991)")
+    parser.add_argument("--stage-overhead-cycles", type=int, default=18_851,
+                        help="fixed measured verifier stage-controller overhead (default: 18851)")
     parser.add_argument("--inline-f-overhead", type=int, default=5,
                         help="request/response cycles for an inline F call (default: 5)")
     parser.add_argument("--wots-prefetch-saving", type=int, default=16,

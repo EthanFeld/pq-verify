@@ -1,0 +1,16 @@
+[options]
+mode bmc
+depth 144
+multiclock on
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal -D FORMAL -sv fv_cmd_ctrl.sv cmd_ctrl.sv
+chparam -set PK_BYTES 1 -set SIG_BYTES 4 fv_cmd_ctrl
+prep -top fv_cmd_ctrl
+
+[files]
+fv_cmd_ctrl.sv
+../../rtl/io/cmd_ctrl.sv

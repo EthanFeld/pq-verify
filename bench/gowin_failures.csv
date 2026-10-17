@@ -1,5 +1,6 @@
-config,rpc,scratch_style,place_option,route_option,failure_code,failure,gowin_fit_pack_seconds,synth_lut,synth_registers,synth_bsram,synth_ssram,reported_logic,logic_limit
-rpc1_scratch2,1,2,0,0,PR0003,Failed to place with '3411 REG(s) unPlaced ' in the device 'GW2AR-18C-QFN88-8',186.079,15845,14864,4,,,
-rpc2_scratch0,2,0,0,0,PR0004,DesRoute failed. There are total 0 unrouted nets,432.718,15793,6639,5,,,
-rpc3_scratch0,3,0,0,0,PR0004,DesRoute failed. There are total 0 unrouted nets,619.993,19669,6640,5,,,
-rpc4_scratch0,4,0,0,0,RP0006,"The number(23721(23261 LUTs, 460 ALUs, 0 ROM16s, 0 SSRAMs)) of logic in the design exceeds the resource limit(20736) of current device",192.417,,,,,23721,20736
+config,source_sha256,rpc,scratch_style,place_option,route_option,failure_code,failure,gowin_fit_pack_seconds,synth_lut,synth_registers,synth_bsram,synth_ssram,reported_logic,logic_limit,f_run_mhz,cycles_mean,perms_mean,latency_us_mean
+rpc1_scratch1,0d8198f2a20a7b86762dae7b6aaf599d63a8d580ef2b978cb7db91847afedaab,1,1,0,0,PR0004,DesRoute failed. There are total 0 unrouted nets,258.622,14269,6751,4,128,,,38.571,69609.3,2188.95,1804.684
+rpc1_scratch2,0d8198f2a20a7b86762dae7b6aaf599d63a8d580ef2b978cb7db91847afedaab,1,2,0,0,PR0003,Failed to place with '2835 REG(s) unPlaced ' in the device 'GW2AR-18C-QFN88-8',126.684,18517,14943,4,,,,38.571,69609.3,2188.95,1804.684
+rpc2_scratch0,0d8198f2a20a7b86762dae7b6aaf599d63a8d580ef2b978cb7db91847afedaab,2,0,0,0,PR0004,DesRoute failed. There are total 0 unrouted nets,233.759,17789,6718,5,,,,38.571,43341.9,2188.95,1123.678
+rpc3_scratch0,0d8198f2a20a7b86762dae7b6aaf599d63a8d580ef2b978cb7db91847afedaab,3,0,0,0,RP0006,"The number(22011(21505 LUTs, 506 ALUs, 0 ROM16s, 0 SSRAMs)) of logic in the design exceeds the resource limit(20736) of current device",56.57,,,,,22011,20736,38.571,34586.1,2188.95,896.676
+rpc4_scratch0,0d8198f2a20a7b86762dae7b6aaf599d63a8d580ef2b978cb7db91847afedaab,4,0,0,0,RP0006,"The number(25709(25206 LUTs, 503 ALUs, 0 ROM16s, 0 SSRAMs)) of logic in the design exceeds the resource limit(20736) of current device",46.046,,,,,25709,20736,38.571,30208.2,2188.95,783.175

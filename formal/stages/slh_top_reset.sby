@@ -1,0 +1,28 @@
+[options]
+mode bmc
+depth 80
+multiclock on
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal -sv fv_slh_top_reset.sv slh_verify_top.sv hmsg.sv fors_verify.sv wots_verify.sv xmss_verify.sv ht_verify.sv thash.sv sig_ram.sv scratch_ram.sv adrs.sv shake256.sv keccak_f1600.sv keccak_round.sv
+chparam -set RPC 4 -set SCRATCH_STYLE 0 slh_verify_top
+prep -top fv_slh_top_reset
+
+[files]
+fv_slh_top_reset.sv
+../../rtl/slh/slh_verify_top.sv
+../../rtl/slh/hmsg.sv
+../../rtl/slh/fors_verify.sv
+../../rtl/slh/wots_verify.sv
+../../rtl/slh/xmss_verify.sv
+../../rtl/slh/ht_verify.sv
+../../rtl/slh/thash.sv
+../../rtl/slh/sig_ram.sv
+../../rtl/slh/scratch_ram.sv
+../../rtl/slh/adrs.sv
+../../rtl/keccak/shake256.sv
+../../rtl/keccak/keccak_f1600.sv
+../../rtl/keccak/keccak_round.sv

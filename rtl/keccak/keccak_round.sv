@@ -1,5 +1,10 @@
 module keccak_round #(
-    parameter integer LUT4_MAP = 0
+    parameter integer LUT4_MAP = 0,
+`ifdef PQ_GOWIN_LUT4
+    parameter integer NATIVE_LUT4 = 1
+`else
+    parameter integer NATIVE_LUT4 = 0
+`endif
 ) (
     input  logic [1599:0] state_in,
     input  logic [4:0]    round_idx,
@@ -95,7 +100,7 @@ module keccak_round #(
             for (genvar bit_index = 0; bit_index < 64; bit_index = bit_index + 1) begin : G_PARITY
                 // Five-input column parity takes two LUTs. Explicit cuts
                 // prevent the mapper from choosing wide LUT mux chains.
-                keccak_lut4 #(.INIT(16'h6996)) u_xor4 (
+                keccak_lut4 #(.INIT(16'h6996), .NATIVE(NATIVE_LUT4)) u_xor4 (
                     .i({
                     state_in[(x + 15) * 64 + bit_index],
                     state_in[(x + 10) * 64 + bit_index],
@@ -103,7 +108,7 @@ module keccak_round #(
                     state_in[x * 64 + bit_index]
                     }), .o(c4[x][bit_index])
                 );
-                keccak_lut4 #(.INIT(16'h6666)) u_xor2 (
+                keccak_lut4 #(.INIT(16'h6666), .NATIVE(NATIVE_LUT4)) u_xor2 (
                     .i({2'b00, state_in[(x + 20) * 64 + bit_index], c4[x][bit_index]}),
                     .o(c[x][bit_index])
                 );
@@ -112,7 +117,7 @@ module keccak_round #(
                 localparam integer LANE = x + 5 * y;
                 for (genvar bit_index = 0; bit_index < 64; bit_index = bit_index + 1) begin : G_THETA
                     // Fuse A xor C[x-1] xor rol(C[x+1], 1) in one LUT.
-                    keccak_lut4 #(.INIT(16'h9696)) u_theta (
+                    keccak_lut4 #(.INIT(16'h9696), .NATIVE(NATIVE_LUT4)) u_theta (
                         .i({1'b0,
                         state_in[LANE * 64 + bit_index],
                         c[(x + 4) % 5][bit_index],
@@ -124,7 +129,7 @@ module keccak_round #(
                     rol64(theta[LANE], rho_offset(LANE));
                 for (genvar bit_index = 0; bit_index < 64; bit_index = bit_index + 1) begin : G_CHI
                     // I0 xor ((not I1) and I2) xor I3, including iota.
-                    keccak_lut4 #(.INIT(16'h659a)) u_chi (
+                    keccak_lut4 #(.INIT(16'h659a), .NATIVE(NATIVE_LUT4)) u_chi (
                         .i({(LANE == 0) ? rc[bit_index] : 1'b0,
                             b[((x + 2) % 5) + 5 * y][bit_index],
                             b[((x + 1) % 5) + 5 * y][bit_index], b[LANE][bit_index]}),
@@ -170,15 +175,20 @@ endmodule
 // One truth table is used by simulation and native Gowin synthesis.
 /* verilator lint_off DECLFILENAME */
 module keccak_lut4 #(
-    parameter logic [15:0] INIT = 16'h0000
+    parameter logic [15:0] INIT = 16'h0000,
+    parameter integer NATIVE = 0
 ) (
     input logic [3:0] i,
     output logic o
 );
-`ifdef PQ_GOWIN_LUT4
-    LUT4 #(.INIT(INIT)) u_lut (.I0(i[0]), .I1(i[1]), .I2(i[2]), .I3(i[3]), .F(o));
-`else
-    assign o = INIT[i];
-`endif
+    generate
+        if (NATIVE != 0) begin : G_NATIVE
+            LUT4 #(.INIT(INIT)) u_lut (
+                .I0(i[0]), .I1(i[1]), .I2(i[2]), .I3(i[3]), .F(o)
+            );
+        end else begin : G_PORTABLE
+            assign o = INIT[i];
+        end
+    endgenerate
 endmodule
 /* verilator lint_on DECLFILENAME */

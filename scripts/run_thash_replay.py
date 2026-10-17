@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -84,9 +83,6 @@ def main() -> int:
                 stream.write(f"{encode_record(call):0{VECTOR_WIDTH_HEX}x}\n")
 
         env = tool_environment()
-        local_msys_bin = Path(r"C:\msys64\mingw64\bin")
-        if local_msys_bin.is_dir():
-            env["PATH"] = str(local_msys_bin) + os.pathsep + env.get("PATH", "")
         sources = [ROOT / "rtl/keccak/keccak_round.sv", ROOT / "rtl/keccak/keccak_f1600.sv",
                    ROOT / "rtl/keccak/shake256.sv", ROOT / "rtl/slh/thash.sv",
                    ROOT / "sim/verify/tb_thash_replay.sv"]

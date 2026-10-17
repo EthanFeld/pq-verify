@@ -12,7 +12,7 @@ module fors_verify (
     output logic          sig_rd_en,
     output logic [15:0]   sig_rd_addr,
     input  logic          sig_valid,
-    input  logic [7:0]    sig_byte,
+    input  logic [31:0]   sig_word,
     output logic          scratch_wr_en,
     output logic [7:0]    scratch_wr_addr,
     output logic [31:0]   scratch_wr_data,
@@ -51,7 +51,7 @@ module fors_verify (
     logic [13:0][11:0] indices_reg;
     logic [3:0] tree_number;
     logic [3:0] level;
-    logic [3:0] byte_index;
+    logic [1:0] word_index;
     logic [1:0] root_word;
     logic [127:0] secret_reg;
     logic [127:0] auth_reg;
@@ -78,10 +78,10 @@ module fors_verify (
         sig_rd_en = (state == ST_SK_REQUEST) || (state == ST_AUTH_REQUEST);
         if (state == ST_SK_REQUEST || state == ST_SK_WAIT) begin
             sig_rd_addr = sig_base_reg + tree_number * FORS_TREE_BYTES
-                + {12'd0, byte_index};
+                + {12'd0, word_index, 2'b00};
         end else begin
             sig_rd_addr = sig_base_reg + tree_number * FORS_TREE_BYTES
-                + 16'd16 + level * 16'd16 + {12'd0, byte_index};
+                + 16'd16 + level * 16'd16 + {12'd0, word_index, 2'b00};
         end
 
         scratch_wr_en = (state == ST_ROOT_WRITE);
@@ -127,7 +127,7 @@ module fors_verify (
             indices_reg <= '0;
             tree_number <= '0;
             level <= '0;
-            byte_index <= '0;
+            word_index <= '0;
             root_word <= '0;
             secret_reg <= '0;
             auth_reg <= '0;
@@ -149,7 +149,7 @@ module fors_verify (
                         indices_reg <= md_idx;
                         tree_number <= '0;
                         level <= '0;
-                        byte_index <= '0;
+                        word_index <= '0;
                         root_word <= '0;
                         path_index <= combine_fors_index(4'd0, md_idx[0]);
                         layer_reg <= layer;
@@ -167,12 +167,12 @@ module fors_verify (
 
                 ST_SK_WAIT: begin
                     if (sig_valid) begin
-                        secret_reg[127 - byte_index * 8 -: 8] <= sig_byte;
-                        if (byte_index == 4'd15) begin
-                            byte_index <= '0;
+                        secret_reg[127 - word_index * 32 -: 32] <= sig_word;
+                        if (word_index == 2'd3) begin
+                            word_index <= '0;
                             state <= ST_F_REQUEST;
                         end else begin
-                            byte_index <= byte_index + 1'b1;
+                            word_index <= word_index + 1'b1;
                             state <= ST_SK_REQUEST;
                         end
                     end
@@ -187,7 +187,7 @@ module fors_verify (
                     if (hash_rsp_valid) begin
                         node_reg <= hash_rsp_node;
                         level <= '0;
-                        byte_index <= '0;
+                        word_index <= '0;
                         state <= ST_AUTH_REQUEST;
                     end
                 end
@@ -198,12 +198,12 @@ module fors_verify (
 
                 ST_AUTH_WAIT: begin
                     if (sig_valid) begin
-                        auth_reg[127 - byte_index * 8 -: 8] <= sig_byte;
-                        if (byte_index == 4'd15) begin
-                            byte_index <= '0;
+                        auth_reg[127 - word_index * 32 -: 32] <= sig_word;
+                        if (word_index == 2'd3) begin
+                            word_index <= '0;
                             state <= ST_H_REQUEST;
                         end else begin
-                            byte_index <= byte_index + 1'b1;
+                            word_index <= word_index + 1'b1;
                             state <= ST_AUTH_REQUEST;
                         end
                     end
@@ -223,7 +223,7 @@ module fors_verify (
                             state <= ST_ROOT_WRITE;
                         end else begin
                             level <= level + 1'b1;
-                            byte_index <= '0;
+                            word_index <= '0;
                             state <= ST_AUTH_REQUEST;
                         end
                     end
@@ -240,7 +240,7 @@ module fors_verify (
                                 indices_reg[tree_number + 1'b1]
                             );
                             level <= '0;
-                            byte_index <= '0;
+                            word_index <= '0;
                             secret_reg <= '0;
                             auth_reg <= '0;
                             state <= ST_SK_REQUEST;

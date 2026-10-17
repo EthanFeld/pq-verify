@@ -153,9 +153,11 @@ def main() -> int:
             "fmax_mhz": core_clock["fmax_mhz"],
             "f_run_mhz": core_clock["constraint_mhz"],
             "timing_flow": "gowin",
+            "gowin_logic_cells": fit["fit"]["resources"]["logic"]["used"],
         }]
         write_csv(args.output_dir / "measurements.csv",
-                  ("config", "rpc", "lut4", "ff", "bsram", "lutram", "fmax_mhz", "f_run_mhz", "timing_flow"),
+                  ("config", "rpc", "lut4", "ff", "bsram", "lutram", "fmax_mhz", "f_run_mhz",
+                   "timing_flow", "gowin_logic_cells"),
                   measurement)
         write_csv(args.output_dir / "verify_cycles.csv",
                   ("config", "tcId", "mode", "cycles", "perms", "keccak_cycles"),

@@ -1,6 +1,9 @@
 module slh_verify_top #(
     parameter integer RPC = 1,
     parameter integer SCRATCH_STYLE = 0
+`ifdef FORMAL
+    , parameter integer FORMAL_CONTROL_ONLY = 0
+`endif
 ) (
     input  logic          clk,
     input  logic          rst_n,
@@ -99,10 +102,8 @@ module slh_verify_top #(
     logic [127:0] ht_root;
 
     logic stage_sig_rd_en;
-    logic [15:0] stage_sig_rd_addr;
+    logic [15:2] stage_sig_rd_addr;
     logic stage_sig_valid;
-    logic [1:0] stage_sig_offset_q;
-    logic [7:0] stage_sig_byte;
     logic [10:0] sig_ram_rd_addr;
     logic [31:0] sig_ram_rd_data;
 
@@ -128,6 +129,7 @@ module slh_verify_top #(
     logic [1:0] thash_src_sel_q;
     logic [1:0] thash_src_offset_q;
     logic [7:0] thash_src_byte;
+    logic [31:0] thash_src_word;
     logic hash_rsp_valid;
     logic [127:0] hash_rsp_node;
     logic thash_shake_in_valid;
@@ -135,6 +137,10 @@ module slh_verify_top #(
     logic [63:0] thash_shake_in_data;
     logic [3:0] thash_shake_in_bytes;
     logic thash_shake_in_last;
+    logic thash_shake_bulk_valid;
+    logic thash_shake_bulk_ready;
+    logic [639:0] thash_shake_bulk_lanes;
+    logic [6:0] thash_shake_bulk_bytes;
     logic thash_shake_out_valid;
     logic [255:0] thash_shake_out;
     logic shake_shared_in_valid;
@@ -142,6 +148,10 @@ module slh_verify_top #(
     logic [63:0] shake_shared_in_data;
     logic [3:0] shake_shared_in_bytes;
     logic shake_shared_in_last;
+    logic shake_shared_bulk_valid;
+    logic shake_shared_bulk_ready;
+    logic [639:0] shake_shared_bulk_lanes;
+    logic [6:0] shake_shared_bulk_bytes;
     logic shake_shared_out_valid;
     logic [255:0] shake_shared_out;
 
@@ -167,6 +177,10 @@ module slh_verify_top #(
         shake_shared_in_data = '0;
         shake_shared_in_bytes = '0;
         shake_shared_in_last = 1'b0;
+        shake_shared_bulk_valid = 1'b0;
+        shake_shared_bulk_lanes = '0;
+        shake_shared_bulk_bytes = '0;
+        thash_shake_bulk_ready = 1'b0;
         if (state == ST_HMSG_WAIT) begin
             shake_shared_in_valid = hmsg_shake_in_valid;
             shake_shared_in_data = hmsg_shake_in_data;
@@ -180,14 +194,18 @@ module slh_verify_top #(
             shake_shared_in_data = thash_shake_in_data;
             shake_shared_in_bytes = thash_shake_in_bytes;
             shake_shared_in_last = thash_shake_in_last;
+            shake_shared_bulk_valid = thash_shake_bulk_valid;
+            shake_shared_bulk_lanes = thash_shake_bulk_lanes;
+            shake_shared_bulk_bytes = thash_shake_bulk_bytes;
             thash_shake_in_ready = shake_shared_in_ready;
+            thash_shake_bulk_ready = shake_shared_bulk_ready;
             thash_shake_out_valid = shake_shared_out_valid;
             thash_shake_out = shake_shared_out;
         end
 
         if (state == ST_FORS_WAIT) begin
             stage_sig_rd_en = fors_sig_rd_en;
-            stage_sig_rd_addr = fors_sig_rd_addr;
+            stage_sig_rd_addr = fors_sig_rd_addr[15:2];
             hash_req_valid = fors_hash_req_valid;
             hash_kind = fors_hash_kind;
             hash_adrs = fors_hash_adrs;
@@ -201,7 +219,7 @@ module slh_verify_top #(
             scratch_wr_data = fors_scratch_wr_data;
         end else if (state == ST_HT_WAIT) begin
             stage_sig_rd_en = ht_sig_rd_en;
-            stage_sig_rd_addr = ht_sig_rd_addr;
+            stage_sig_rd_addr = ht_sig_rd_addr[15:2];
             hash_req_valid = ht_hash_req_valid;
             hash_kind = ht_hash_kind;
             hash_adrs = ht_hash_adrs;
@@ -215,7 +233,7 @@ module slh_verify_top #(
             scratch_wr_data = ht_scratch_wr_data;
         end else begin
             stage_sig_rd_en = 1'b0;
-            stage_sig_rd_addr = 16'd0;
+            stage_sig_rd_addr = '0;
             hash_req_valid = 1'b0;
             hash_kind = 2'd0;
             hash_adrs = 256'd0;
@@ -247,11 +265,14 @@ module slh_verify_top #(
         else
             sig_ram_rd_addr = 11'd0;
 
-        stage_sig_byte = sig_ram_rd_data[31 - stage_sig_offset_q * 8 -: 8];
         if (thash_src_sel_q == 2'd1)
             thash_src_byte = scratch_rd_data[31 - thash_src_offset_q * 8 -: 8];
         else
             thash_src_byte = sig_ram_rd_data[31 - thash_src_offset_q * 8 -: 8];
+        if (thash_src_sel_q == 2'd1)
+            thash_src_word = scratch_rd_data;
+        else
+            thash_src_word = sig_ram_rd_data;
 
     end
 
@@ -294,7 +315,7 @@ module slh_verify_top #(
         .md_idx(md_idx), .idx_tree(idx_tree), .idx_leaf(idx_leaf),
         .layer(32'd0), .sig_base(FORS_OFFSET), .pk_seed(pk_seed),
         .sig_rd_en(fors_sig_rd_en), .sig_rd_addr(fors_sig_rd_addr),
-        .sig_valid(stage_sig_valid), .sig_byte(stage_sig_byte),
+        .sig_valid(stage_sig_valid), .sig_word(sig_ram_rd_data),
         .scratch_wr_en(fors_scratch_wr_en), .scratch_wr_addr(fors_scratch_wr_addr),
         .scratch_wr_data(fors_scratch_wr_data),
         .hash_req_valid(fors_hash_req_valid), .hash_req_ready(hash_req_ready),
@@ -312,7 +333,8 @@ module slh_verify_top #(
         .message(fors_pk), .idx_tree(idx_tree), .idx_leaf(idx_leaf),
         .sig_base(HT_OFFSET), .pk_seed(pk_seed),
         .sig_rd_en(ht_sig_rd_en), .sig_rd_addr(ht_sig_rd_addr),
-        .sig_valid(stage_sig_valid), .sig_byte(stage_sig_byte),
+        .sig_valid(stage_sig_valid),
+        .sig_word(sig_ram_rd_data),
         .scratch_wr_en(ht_scratch_wr_en), .scratch_wr_addr(ht_scratch_wr_addr),
         .scratch_wr_data(ht_scratch_wr_data),
         .hash_req_valid(ht_hash_req_valid), .hash_req_ready(hash_req_ready),
@@ -332,19 +354,30 @@ module slh_verify_top #(
         .req_count(hash_count), .pk_seed(hash_pk_seed), .req_pair(hash_pair),
         .src_rd_en(thash_src_rd_en), .src_rd_sel(thash_src_rd_sel),
         .src_rd_addr(thash_src_rd_addr), .src_valid(thash_src_valid),
-        .src_byte(thash_src_byte),
+        .src_byte(thash_src_byte), .src_word(thash_src_word),
         .shake_in_valid(thash_shake_in_valid), .shake_in_ready(thash_shake_in_ready),
         .shake_in_data(thash_shake_in_data), .shake_in_bytes(thash_shake_in_bytes),
-        .shake_in_last(thash_shake_in_last), .shake_out_valid(thash_shake_out_valid),
+        .shake_in_last(thash_shake_in_last),
+        .shake_bulk_valid(thash_shake_bulk_valid), .shake_bulk_ready(thash_shake_bulk_ready),
+        .shake_bulk_lanes(thash_shake_bulk_lanes), .shake_bulk_bytes(thash_shake_bulk_bytes),
+        .shake_out_valid(thash_shake_out_valid),
         .shake_out(thash_shake_out), .rsp_valid(hash_rsp_valid),
         .rsp_node(hash_rsp_node)
     );
 
-    shake256 #(.RPC(RPC)) u_shared_shake256 (
+    shake256 #(
+        .RPC(RPC)
+`ifdef FORMAL
+        , .FORMAL_CONTROL_ONLY(FORMAL_CONTROL_ONLY)
+`endif
+    ) u_shared_shake256 (
         .clk(clk), .rst_n(rst_n),
         .in_valid(shake_shared_in_valid), .in_ready(shake_shared_in_ready),
         .in_data(shake_shared_in_data), .in_bytes(shake_shared_in_bytes),
-        .in_last(shake_shared_in_last), .out_valid(shake_shared_out_valid),
+        .in_last(shake_shared_in_last),
+        .bulk_valid(shake_shared_bulk_valid), .bulk_ready(shake_shared_bulk_ready),
+        .bulk_lanes(shake_shared_bulk_lanes), .bulk_bytes(shake_shared_bulk_bytes),
+        .out_valid(shake_shared_out_valid),
         .out(shake_shared_out), .permutation_start(shake_permutation_start)
     );
 
@@ -358,7 +391,6 @@ module slh_verify_top #(
             pure_mode_reg <= 1'b0;
             ctx_len_reg <= '0;
             stage_sig_valid <= 1'b0;
-            stage_sig_offset_q <= '0;
             thash_src_valid <= 1'b0;
             thash_src_sel_q <= '0;
             thash_src_offset_q <= '0;
@@ -368,10 +400,9 @@ module slh_verify_top #(
             perms <= '0;
         end else begin
             done <= 1'b0;
+            valid <= 1'b0;
             stage_sig_valid <= stage_sig_rd_en;
             thash_src_valid <= thash_src_rd_en;
-            if (stage_sig_rd_en)
-                stage_sig_offset_q <= stage_sig_rd_addr[1:0];
             if (thash_src_rd_en) begin
                 thash_src_sel_q <= thash_src_rd_sel;
                 thash_src_offset_q <= thash_src_rd_addr[1:0];

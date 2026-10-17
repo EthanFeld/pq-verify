@@ -15,7 +15,7 @@ module tb_wots_corner;
     wire sig_rd_en;
     wire [15:0] sig_rd_addr;
     logic sig_valid = 0;
-    logic [7:0] sig_byte = 0;
+    logic [31:0] sig_word = 0;
     wire scratch_wr_en;
     wire [7:0] scratch_wr_addr;
     wire [31:0] scratch_wr_data;
@@ -51,7 +51,7 @@ module tb_wots_corner;
         .clk(clk), .rst_n(rst_n), .start(start), .start_ready(start_ready),
         .message(message), .layer(layer), .tree(tree), .keypair(keypair),
         .sig_base(sig_base), .pk_seed(pk_seed), .sig_rd_en(sig_rd_en),
-        .sig_rd_addr(sig_rd_addr), .sig_valid(sig_valid), .sig_byte(sig_byte),
+        .sig_rd_addr(sig_rd_addr), .sig_valid(sig_valid), .sig_word(sig_word),
         .scratch_wr_en(scratch_wr_en), .scratch_wr_addr(scratch_wr_addr),
         .scratch_wr_data(scratch_wr_data), .hash_req_valid(hash_req_valid),
         .hash_req_ready(hash_req_ready), .hash_kind(hash_kind), .hash_adrs(hash_adrs),
@@ -95,7 +95,7 @@ module tb_wots_corner;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             sig_valid <= 0;
-            sig_byte <= 0;
+            sig_word <= 0;
             pending_hash <= 0;
             hash_delay_count <= 0;
             hash_rsp_valid <= 0;
@@ -112,10 +112,14 @@ module tb_wots_corner;
         end else begin
             sig_valid <= sig_rd_en;
             if (sig_rd_en) begin
-                if (sig_rd_addr !== expected_base + sig_reads)
+                if (sig_rd_addr !== expected_base + sig_reads * 4)
                     $fatal(1, "signature address read=%0d got=%0d expected=%0d",
-                           sig_reads, sig_rd_addr, expected_base + sig_reads);
-                sig_byte <= sig_rd_addr[7:0] ^ 8'h5a;
+                           sig_reads, sig_rd_addr, expected_base + sig_reads * 4);
+                if (sig_rd_addr[1:0] != 2'b00)
+                    $fatal(1, "unaligned word signature read at %0d", sig_rd_addr);
+                for (integer byte_offset = 0; byte_offset < 4; byte_offset = byte_offset + 1)
+                    sig_word[31 - byte_offset * 8 -: 8]
+                        <= 8'((sig_rd_addr + 16'(byte_offset)) ^ 8'h5a);
                 sig_reads <= sig_reads + 1;
             end
 
@@ -141,7 +145,7 @@ module tb_wots_corner;
             if (dut.prefetch_sig_rd_en)
                 prefetch_reads <= prefetch_reads + 1;
             if (dut.prefetch_hit)
-                cached_sig_bytes <= cached_sig_bytes + 1;
+                cached_sig_bytes <= cached_sig_bytes + 16;
 
             if (hash_req_valid && hash_req_ready) begin
                 last_hash_result <= mock_hash(hash_pair, hash_adrs);
@@ -216,7 +220,7 @@ module tb_wots_corner;
             for (integer index = 0; index < 34; index = index + 1)
                 if (digit_for(msg, index) != 4'd15)
                     expected_prefetches = expected_prefetches + 1;
-            if (sig_reads != 560 || prefetch_reads != expected_prefetches * 16
+            if (sig_reads != 140 || prefetch_reads != expected_prefetches * 4
                 || cached_sig_bytes != expected_prefetches * 16
                 || scratch_writes != 140 || hash_calls != expected_hashes
                 || tlen_calls != 1 || wots_pk !== last_hash_result)

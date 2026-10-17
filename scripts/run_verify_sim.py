@@ -5,8 +5,6 @@ from __future__ import annotations
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
-import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -14,6 +12,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from model.trace import trace_case  # noqa: E402
+from model.vector_corpus import load_vector_cases  # noqa: E402
 from scripts.board_build import RTL  # noqa: E402
 from scripts.run_hash_sim import run_logged, tool_environment, write_hex  # noqa: E402
 from scripts.verilator_build import build_binary  # noqa: E402
@@ -74,7 +73,9 @@ def main() -> int:
     parser.add_argument("--vectors", type=Path, default=ROOT / "vectors/shake128s/sigver.json")
     args = parser.parse_args()
     try:
-        vectors = json.loads(args.vectors.read_text(encoding="utf-8"))
+        vectors = load_vector_cases(args.vectors)
+        if not isinstance(vectors, list):
+            raise ValueError("vector file must contain a list or a header/tests document")
         if args.all:
             selected = [vector for vector in vectors if len(vector["signature"]) == 7856 * 2
                         and len(vector["pk"]) == 32 * 2
@@ -95,9 +96,6 @@ def main() -> int:
                               message_capacity, context_capacity)
                  for vector in selected]
         env = tool_environment()
-        local_msys_bin = Path(r"C:\msys64\mingw64\bin")
-        if local_msys_bin.is_dir():
-            env["PATH"] = str(local_msys_bin) + os.pathsep + env.get("PATH", "")
         suffix = f"_scratch{args.scratch_style}" if args.scratch_style else ""
         build_directory = ROOT / "build/sim_verify" / f"shared_rpc{args.rpc}{suffix}"
         sources = [ROOT / "rtl" / name for name in RTL

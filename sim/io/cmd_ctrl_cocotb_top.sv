@@ -1,5 +1,6 @@
 module cmd_ctrl_cocotb_top #(
-    parameter integer CLKS_PER_BIT = 4
+    parameter integer CLKS_PER_BIT = 4,
+    parameter integer SIG_BYTES = 7856
 ) (
     input  logic          clk,
     input  logic          rst_n,
@@ -27,5 +28,5 @@ module cmd_ctrl_cocotb_top #(
     output logic [10:0]   sig_load_addr,
     output logic [31:0]   sig_load_data
 );
-    cmd_ctrl #(.CLKS_PER_BIT(CLKS_PER_BIT)) dut (.*);
+    cmd_ctrl #(.CLKS_PER_BIT(CLKS_PER_BIT), .SIG_BYTES(SIG_BYTES)) dut (.*);
 endmodule

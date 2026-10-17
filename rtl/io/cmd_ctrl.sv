@@ -1,5 +1,7 @@
 module cmd_ctrl #(
-    parameter integer CLKS_PER_BIT = 434
+    parameter integer CLKS_PER_BIT = 434,
+    parameter integer PK_BYTES = 32,
+    parameter integer SIG_BYTES = 7856
 ) (
     input  logic          clk,
     input  logic          rst_n,
@@ -29,6 +31,10 @@ module cmd_ctrl #(
     input  logic          verify_valid,
     input  logic [31:0]   verify_cycles,
     input  logic [15:0]   verify_perms
+`ifdef FORMAL
+    , input logic         formal_rx_byte_valid
+    , input logic [7:0]   formal_rx_byte
+`endif
 );
     localparam logic [7:0] SYNC_REQ = 8'hA5;
     localparam logic [7:0] SYNC_RSP = 8'h5A;
@@ -40,8 +46,6 @@ module cmd_ctrl #(
     localparam logic [7:0] STATUS_BAD_CRC = 8'h01;
     localparam logic [7:0] STATUS_BAD_LENGTH = 8'h02;
     localparam logic [7:0] STATUS_BUSY = 8'h03;
-    localparam logic [31:0] PK_BYTES = 32'd32;
-    localparam logic [31:0] SIG_BYTES = 32'd7856;
 
     typedef enum logic [2:0] {
         P_SYNC,
@@ -75,7 +79,7 @@ module cmd_ctrl #(
     logic frame_busy;
     logic pk_loaded;
     logic sig_loaded;
-    logic verify_started;
+    logic frame_verify_started;
     logic core_busy;
     logic core_done_seen;
     logic wait_verify_response;
@@ -105,6 +109,13 @@ module cmd_ctrl #(
     logic response_valid_value;
     logic [31:0] response_cycles_value;
     logic [15:0] response_perms_value;
+    logic deferred_response_valid;
+    logic [1:0] deferred_response_kind;
+    logic [7:0] deferred_response_command;
+    logic [7:0] deferred_response_status;
+    logic deferred_response_valid_value;
+    logic [31:0] deferred_response_cycles_value;
+    logic [15:0] deferred_response_perms_value;
     logic [7:0] computed_status;
     logic crc_matches;
 
@@ -125,6 +136,13 @@ module cmd_ctrl #(
         end
     endfunction
 
+`ifdef FORMAL
+    assign rx_byte_valid = formal_rx_byte_valid;
+    assign rx_byte = formal_rx_byte;
+    assign rx_framing_error = 1'b0;
+    assign uart_tx_pin = 1'b1;
+    assign tx_byte_ready = 1'b1;
+`else
     uart_rx #(.CLKS_PER_BIT(CLKS_PER_BIT)) u_uart_rx (
         .clk(clk), .rst_n(rst_n), .rx(uart_rx_pin),
         .byte_valid(rx_byte_valid), .byte_data(rx_byte),
@@ -136,6 +154,7 @@ module cmd_ctrl #(
         .byte_valid(response_pending), .byte_ready(tx_byte_ready),
         .byte_data(tx_byte), .tx(uart_tx_pin)
     );
+`endif
 
     always_comb begin
         crc_next = crc8_step(crc_value, rx_byte);
@@ -176,7 +195,7 @@ module cmd_ctrl #(
             frame_busy <= 1'b0;
             pk_loaded <= 1'b0;
             sig_loaded <= 1'b0;
-            verify_started <= 1'b0;
+            frame_verify_started <= 1'b0;
             core_busy <= 1'b0;
             core_done_seen <= 1'b0;
             wait_verify_response <= 1'b0;
@@ -208,6 +227,13 @@ module cmd_ctrl #(
             response_valid_value <= 1'b0;
             response_cycles_value <= '0;
             response_perms_value <= '0;
+            deferred_response_valid <= 1'b0;
+            deferred_response_kind <= '0;
+            deferred_response_command <= '0;
+            deferred_response_status <= STATUS_OK;
+            deferred_response_valid_value <= 1'b0;
+            deferred_response_cycles_value <= '0;
+            deferred_response_perms_value <= '0;
             for (integer response_i = 0; response_i < 10; response_i = response_i + 1)
                 response_mem[response_i] <= '0;
         end else begin
@@ -230,17 +256,6 @@ module cmd_ctrl #(
                 saved_verify_valid <= verify_valid;
                 saved_verify_cycles <= verify_cycles;
                 saved_verify_perms <= verify_perms;
-                if (wait_verify_response) begin
-                    response_kind <= 2'd2;
-                    response_command <= CMD_VERIFY;
-                    response_status <= verify_frame_status;
-                    response_valid_value <= (verify_frame_status == STATUS_OK) && verify_valid;
-                    response_cycles_value <= verify_cycles;
-                    response_perms_value <= verify_perms;
-                    queue_response <= 1'b1;
-                    wait_verify_response <= 1'b0;
-                    verify_started <= 1'b0;
-                end
             end
 
             if (queue_response) begin
@@ -281,7 +296,8 @@ module cmd_ctrl #(
 
             if (rx_framing_error) begin
                 parser_state <= P_SYNC;
-                if (verify_started) begin
+                frame_verify_started <= 1'b0;
+                if (frame_verify_started) begin
                     msg_end_pending <= 1'b1;
                     verify_frame_status <= STATUS_BAD_CRC;
                     if (core_done_seen) begin
@@ -292,7 +308,6 @@ module cmd_ctrl #(
                         response_cycles_value <= saved_verify_cycles;
                         response_perms_value <= saved_verify_perms;
                         queue_response <= 1'b1;
-                        verify_started <= 1'b0;
                     end else begin
                         wait_verify_response <= 1'b1;
                     end
@@ -340,8 +355,8 @@ module cmd_ctrl #(
                         crc_value <= crc_next;
                         frame_busy <= core_busy || !sig_load_ready;
                         frame_bad_length <= 1'b0;
+                        frame_verify_started <= 1'b0;
                         if (!core_busy) begin
-                            verify_started <= 1'b0;
                             core_done_seen <= 1'b0;
                             wait_verify_response <= 1'b0;
                         end
@@ -427,14 +442,14 @@ module cmd_ctrl #(
                                     && (frame_length >= (32'd6 + {24'd0, rx_byte}))
                                     && verify_start_ready) begin
                                     verify_start <= 1'b1;
-                                    verify_started <= 1'b1;
+                                    frame_verify_started <= 1'b1;
                                     core_busy <= 1'b1;
                                 end else if (!verify_start_ready) begin
                                     frame_busy <= 1'b1;
                                 end
                             end else if ((payload_index >= 13'd2)
                                 && (payload_index < (13'd2 + {5'd0, verify_ctx_len_reg}))) begin
-                                if (verify_started) begin
+                                if (frame_verify_started) begin
                                     ctx_byte_reg <= rx_byte;
                                     ctx_pending <= 1'b1;
                                 end
@@ -450,11 +465,11 @@ module cmd_ctrl #(
                                             + {rx_byte, message_length[23:0]}))
                                             frame_bad_length <= 1'b1;
                                         if (({rx_byte, message_length[23:0]} == 0)
-                                            && verify_started)
+                                            && frame_verify_started)
                                             msg_end_pending <= 1'b1;
                                     end
                                 endcase
-                            end else if ((message_remaining != 0) && verify_started) begin
+                            end else if ((message_remaining != 0) && frame_verify_started) begin
                                 msg_byte_reg <= rx_byte;
                                 msg_pending <= 1'b1;
                                 msg_last_reg <= (message_remaining == 1)
@@ -464,7 +479,7 @@ module cmd_ctrl #(
                         end
 
                         if ((payload_remaining == 1) && (command == CMD_VERIFY)
-                            && verify_started
+                            && frame_verify_started
                             && !((payload_index >= (13'd6 + {5'd0, verify_ctx_len_reg}))
                                 && (message_remaining != 0)))
                             msg_end_pending <= 1'b1;
@@ -475,14 +490,16 @@ module cmd_ctrl #(
 
                     P_CRC: begin
                         parser_state <= P_SYNC;
+                        frame_verify_started <= 1'b0;
                         if ((command == CMD_LOAD_PK) && !frame_busy && !frame_bad_length)
                             pk_loaded <= crc_matches;
                         if ((command == CMD_LOAD_SIG) && !frame_busy && !frame_bad_length)
                             sig_loaded <= crc_matches;
 
                         if (command == CMD_VERIFY) begin
-                            verify_frame_status <= computed_status;
-                            if (verify_started) begin
+                            if (frame_verify_started)
+                                verify_frame_status <= computed_status;
+                            if (frame_verify_started) begin
                                 if (core_done_seen || verify_done) begin
                                     response_kind <= 2'd2;
                                     response_command <= CMD_VERIFY;
@@ -494,7 +511,6 @@ module cmd_ctrl #(
                                     response_perms_value <= verify_done
                                         ? verify_perms : saved_verify_perms;
                                     queue_response <= 1'b1;
-                                    verify_started <= 1'b0;
                                 end else begin
                                     wait_verify_response <= 1'b1;
                                 end
@@ -523,16 +539,151 @@ module cmd_ctrl #(
             end
 
             if (verify_done && wait_verify_response) begin
-                response_kind <= 2'd2;
-                response_command <= CMD_VERIFY;
-                response_status <= verify_frame_status;
-                response_valid_value <= (verify_frame_status == STATUS_OK) && verify_valid;
-                response_cycles_value <= verify_cycles;
-                response_perms_value <= verify_perms;
-                queue_response <= 1'b1;
+                if (rx_byte_valid && parser_state == P_CRC) begin
+                    deferred_response_valid <= 1'b1;
+                    deferred_response_kind <= (command == CMD_PING) ? 2'd0
+                        : ((command == CMD_VERIFY) ? 2'd2 : 2'd1);
+                    deferred_response_command <= command;
+                    deferred_response_status <= computed_status;
+                    deferred_response_valid_value <= 1'b0;
+                    deferred_response_cycles_value <= '0;
+                    deferred_response_perms_value <= '0;
+                    response_kind <= 2'd2;
+                    response_command <= CMD_VERIFY;
+                    response_status <= verify_frame_status;
+                    response_valid_value <= (verify_frame_status == STATUS_OK) && verify_valid;
+                    response_cycles_value <= verify_cycles;
+                    response_perms_value <= verify_perms;
+                    queue_response <= 1'b1;
+                end else if (response_pending || queue_response) begin
+                    deferred_response_valid <= 1'b1;
+                    deferred_response_kind <= 2'd2;
+                    deferred_response_command <= CMD_VERIFY;
+                    deferred_response_status <= verify_frame_status;
+                    deferred_response_valid_value <= (verify_frame_status == STATUS_OK) && verify_valid;
+                    deferred_response_cycles_value <= verify_cycles;
+                    deferred_response_perms_value <= verify_perms;
+                    queue_response <= 1'b0;
+                end else begin
+                    response_kind <= 2'd2;
+                    response_command <= CMD_VERIFY;
+                    response_status <= verify_frame_status;
+                    response_valid_value <= (verify_frame_status == STATUS_OK) && verify_valid;
+                    response_cycles_value <= verify_cycles;
+                    response_perms_value <= verify_perms;
+                    queue_response <= 1'b1;
+                end
                 wait_verify_response <= 1'b0;
-                verify_started <= 1'b0;
+            end
+
+            if (deferred_response_valid && !response_pending && !queue_response
+                && !(rx_byte_valid && parser_state == P_CRC)) begin
+                response_kind <= deferred_response_kind;
+                response_command <= deferred_response_command;
+                response_status <= deferred_response_status;
+                response_valid_value <= deferred_response_valid_value;
+                response_cycles_value <= deferred_response_cycles_value;
+                response_perms_value <= deferred_response_perms_value;
+                queue_response <= 1'b1;
+                deferred_response_valid <= 1'b0;
             end
         end
     end
+
+`ifdef FORMAL
+    logic formal_start_allowed;
+    logic formal_expect_busy_response;
+    logic formal_expect_bad_crc_response;
+    logic formal_active_bad_crc;
+    logic formal_deferred_busy_waiting;
+
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            formal_start_allowed <= 1'b0;
+            formal_expect_busy_response <= 1'b0;
+            formal_expect_bad_crc_response <= 1'b0;
+            formal_active_bad_crc <= 1'b0;
+            formal_deferred_busy_waiting <= 1'b0;
+        end else begin
+            if (response_pending || queue_response || deferred_response_valid)
+                assume (!formal_rx_byte_valid);
+
+            if (verify_start)
+                assert (formal_start_allowed);
+            formal_start_allowed <= rx_byte_valid
+                && parser_state == P_PAYLOAD
+                && command == CMD_VERIFY
+                && payload_index == 13'd1
+                && !frame_busy
+                && verify_mode_reg <= 8'd1
+                && pk_loaded && sig_loaded
+                && (verify_mode_reg != 0 || rx_byte == 0)
+                && frame_length >= (32'd6 + {24'd0, rx_byte})
+                && verify_start_ready;
+
+            if (formal_expect_busy_response) begin
+                assert (queue_response || deferred_response_valid);
+                if (deferred_response_valid) begin
+                    assert (deferred_response_command == CMD_VERIFY);
+                    assert (deferred_response_status == STATUS_BUSY);
+                end else begin
+                    assert (response_command == CMD_VERIFY);
+                    assert (response_status == STATUS_BUSY);
+                end
+            end
+            formal_expect_busy_response <= rx_byte_valid
+                && parser_state == P_CRC
+                && command == CMD_VERIFY
+                && frame_busy && !frame_bad_length && crc_matches;
+
+            if (formal_expect_bad_crc_response) begin
+                assert (queue_response || deferred_response_valid);
+                if (deferred_response_valid) begin
+                    assert (deferred_response_command == CMD_VERIFY);
+                    assert (deferred_response_status == STATUS_BAD_CRC);
+                end else begin
+                    assert (response_command == CMD_VERIFY);
+                    assert (response_status == STATUS_BAD_CRC);
+                end
+            end
+            formal_expect_bad_crc_response <= rx_byte_valid
+                && parser_state == P_CRC
+                && command == CMD_VERIFY
+                && !frame_verify_started && !crc_matches;
+
+            if (rx_byte_valid && parser_state == P_CRC
+                && command == CMD_VERIFY && frame_verify_started && !crc_matches)
+                formal_active_bad_crc <= 1'b1;
+            if (deferred_response_valid
+                && deferred_response_command == CMD_VERIFY
+                && deferred_response_status == STATUS_BUSY)
+                formal_deferred_busy_waiting <= 1'b1;
+            if (formal_deferred_busy_waiting && queue_response
+                && response_command == CMD_VERIFY && response_status == STATUS_BUSY) begin
+                formal_deferred_busy_waiting <= 1'b0;
+            end
+            if (queue_response && response_command == CMD_VERIFY && !core_busy) begin
+                if (formal_active_bad_crc)
+                    assert (response_status != STATUS_OK);
+                if (response_status == STATUS_BAD_CRC)
+                    formal_active_bad_crc <= 1'b0;
+            end
+
+            cover (verify_start);
+            cover (formal_expect_busy_response && queue_response
+                && response_command == CMD_VERIFY && response_status == STATUS_BUSY);
+            cover (formal_expect_bad_crc_response && queue_response
+                && response_command == CMD_VERIFY && response_status == STATUS_BAD_CRC);
+            cover (formal_active_bad_crc && queue_response
+                && response_command == CMD_VERIFY && !core_busy
+                && response_status != STATUS_OK);
+            cover (formal_expect_busy_response && deferred_response_valid
+                && deferred_response_command == CMD_VERIFY
+                && deferred_response_status == STATUS_BUSY
+                && queue_response && response_command == CMD_VERIFY);
+            cover (formal_deferred_busy_waiting && queue_response
+                && response_command == CMD_VERIFY && response_status == STATUS_BUSY);
+        end
+    end
+`endif
 endmodule

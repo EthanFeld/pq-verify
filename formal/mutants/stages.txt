@@ -1,0 +1,9 @@
+# Target: stages
+# wots_hash_payload_changes_on_ready: Change hash_pair bit 0 with hash_req_ready; expected kill: hash request payload stability assertion.
+# wots_hash_address_changes_on_ready: Change the WOTS chain address with hash_req_ready; expected kill: hash request payload stability assertion.
+# fors_hash_payload_changes_on_ready: Change hash_pair bit 0 with hash_req_ready; expected kill: hash request payload stability assertion.
+# fors_hash_address_changes_on_ready: Change the FORS tree address with hash_req_ready; expected kill: hash request payload stability assertion.
+# xmss_hash_payload_changes_on_ready: Change hash_pair bit 0 with hash_req_ready; expected kill: hash request payload stability assertion.
+# xmss_hash_address_changes_on_ready: Change the XMSS tree address with hash_req_ready; expected kill: hash request payload stability assertion.
+# ht_hash_payload_changes_on_ready: Change the forwarded WOTS hash_pair bit 0 with hash_req_ready; expected kill: hash request payload stability assertion.
+# ht_hash_address_changes_on_ready: Change the forwarded WOTS address with hash_req_ready; expected kill: hash request payload stability assertion.

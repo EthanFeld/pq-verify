@@ -1,0 +1,13 @@
+{
+  "cases": 428,
+  "acvp_cases": 28,
+  "generated_cases": 400,
+  "verdict_matches": 428,
+  "exact_cycle_matches": 428,
+  "exact_permutation_matches": 428,
+  "max_absolute_cycle_delta": 0,
+  "mean_absolute_cycle_delta": 0,
+  "uart_simulation_clks_per_bit": 4,
+  "uart_simulation_note": "Accelerated UART framing; verifier response counters compared per vector.",
+  "results_csv": "hardware_sim_parity.csv"
+}

@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
 import subprocess
@@ -14,6 +13,7 @@ import sys
 
 from board_build import ROOT
 from gowin_build import current_sources, inspect_reports
+from tools import resolve_programmer_cli
 
 DEVICE = "GW2AR-18C"
 DEVICE_ID = "0x0000081B"
@@ -46,10 +46,7 @@ def main() -> int:
             raise ValueError("bitstream checksum does not match its build manifest")
         fit = inspect_reports(build)
 
-        gowin = Path(os.environ.get("GOWIN_HOME", r"C:\Gowin\Gowin_V1.9.11.03_Education_x64"))
-        programmer = gowin / "Programmer/bin/programmer_cli.exe"
-        if not programmer.is_file():
-            raise ValueError(f"Gowin Programmer is missing: {programmer}")
+        programmer = Path(resolve_programmer_cli())
 
         scan_command = [str(programmer), "--scan", "--cable-index", str(args.cable_index),
                         "--channel", str(args.channel)]

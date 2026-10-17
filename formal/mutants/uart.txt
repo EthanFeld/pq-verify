@@ -1,0 +1,3 @@
+# Target: uart
+# uart_tx_reverses_bit_order: Transmit shift_reg[7-bit_index]; expected kill: TX/RX byte equality.
+# uart_rx_accepts_false_start: Skip the midpoint start-bit check; expected kill: idle-glitch no-byte assertion.

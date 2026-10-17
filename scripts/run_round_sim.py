@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 from pathlib import Path
 import random
 import subprocess
@@ -15,6 +14,7 @@ sys.path.insert(0, str(ROOT))
 from model.keccak_ref import keccak_round  # noqa: E402
 from scripts.run_hash_sim import run_logged, tool_environment  # noqa: E402
 from scripts.verilator_build import build_binary  # noqa: E402
+from scripts.tools import yosys_data_file  # noqa: E402
 
 
 def main() -> int:
@@ -44,13 +44,9 @@ def main() -> int:
                 stream.write(f"{state_value:0400x}{round_index:02x}{result_value:0400x}\n")
 
         env = tool_environment()
-        local_msys_bin = Path(r"C:\msys64\mingw64\bin")
-        if local_msys_bin.is_dir():
-            env["PATH"] = str(local_msys_bin) + os.pathsep + env.get("PATH", "")
         sources = [ROOT / "rtl/keccak/keccak_round.sv", ROOT / "sim/keccak/tb_keccak_round.sv"]
         if args.native_luts:
-            suite = Path(env.get("YOSYSHQ_ROOT", r"C:\oss-cad-suite\oss-cad-suite"))
-            library = suite / "share/yosys/gowin/cells_sim.v"
+            library = yosys_data_file("gowin/cells_sim.v", env)
             copied_library = directory / "gowin_cells_sim.v"
             copied_library.write_bytes(library.read_bytes())
             defines = directory / "native_defines.sv"

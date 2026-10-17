@@ -1,5 +1,8 @@
 module shake256 #(
     parameter integer RPC = 1
+`ifdef FORMAL
+    , parameter integer FORMAL_CONTROL_ONLY = 0
+`endif
 ) (
     input  logic          clk,
     input  logic          rst_n,
@@ -8,12 +11,24 @@ module shake256 #(
     input  logic [63:0]   in_data,
     input  logic [3:0]    in_bytes,
     input  logic          in_last,
+    input  logic          bulk_valid,
+    output logic          bulk_ready,
+    input  logic [639:0]  bulk_lanes,
+    input  logic [6:0]    bulk_bytes,
     output logic          out_valid,
     output logic [255:0]  out,
     output logic          permutation_start
+`ifdef FORMAL
+    , output logic         formal_perm_busy
+`endif
 );
     localparam logic [4:0] LAST_LANE = 5'd16;
     localparam integer RATE_BYTES = 136;
+`ifdef FORMAL
+    localparam integer BULK_CONTROL_ABSTRACT = FORMAL_CONTROL_ONLY;
+`else
+    localparam integer BULK_CONTROL_ABSTRACT = 0;
+`endif
 
     typedef enum logic [1:0] {
         ST_ABSORB,
@@ -24,6 +39,7 @@ module shake256 #(
     state_t state;
     logic [1599:0] sponge_state;
     logic [1599:0] absorb_result;
+    logic [1599:0] bulk_absorb_result;
     logic [1599:0] perm_state_out;
     logic [1599:0] perm_state_in;
     logic perm_state_load;
@@ -72,6 +88,27 @@ module shake256 #(
             absorb_result[(RATE_BYTES - 1) * 8 + 7] =
                 absorb_result[(RATE_BYTES - 1) * 8 + 7] ^ 1'b1;
 
+        bulk_absorb_result = '0;
+        if (BULK_CONTROL_ABSTRACT == 0) begin
+            bulk_absorb_result = sponge_state;
+            for (integer bulk_lane = 0; bulk_lane < 10; bulk_lane = bulk_lane + 1) begin
+                if (bulk_lane * 8 < bulk_bytes)
+                    bulk_absorb_result[bulk_lane * 64 +: 64] =
+                        sponge_state[bulk_lane * 64 +: 64] ^ bulk_lanes[bulk_lane * 64 +: 64];
+            end
+            if (bulk_bytes == 7'd64) begin
+                bulk_absorb_result[64 * 8 +: 8] =
+                    bulk_absorb_result[64 * 8 +: 8] ^ 8'h1f;
+                bulk_absorb_result[(RATE_BYTES - 1) * 8 + 7] =
+                    bulk_absorb_result[(RATE_BYTES - 1) * 8 + 7] ^ 1'b1;
+            end else if (bulk_bytes == 7'd80) begin
+                bulk_absorb_result[80 * 8 +: 8] =
+                    bulk_absorb_result[80 * 8 +: 8] ^ 8'h1f;
+                bulk_absorb_result[(RATE_BYTES - 1) * 8 + 7] =
+                    bulk_absorb_result[(RATE_BYTES - 1) * 8 + 7] ^ 1'b1;
+            end
+        end
+
         empty_pad_state = '0;
         empty_pad_state[7:0] = 8'h1f;
         empty_pad_state[(RATE_BYTES - 1) * 8 +: 8] = 8'h80;
@@ -80,7 +117,10 @@ module shake256 #(
         perm_state_load = 1'b0;
         case (state)
             ST_ABSORB: begin
-                if (in_valid && in_ready) begin
+                if (bulk_valid && bulk_ready) begin
+                    perm_state_in = bulk_absorb_result;
+                    perm_state_load = 1'b1;
+                end else if (in_valid && in_ready) begin
                     perm_state_in = absorb_result;
                     perm_state_load = 1'b1;
                 end
@@ -104,11 +144,22 @@ module shake256 #(
         endcase
     end
 
-    assign in_ready = (state == ST_ABSORB) && !perm_busy;
+    // Keep the next message from being accepted in the same cycle as the
+    // previous response. The response handshake remains unambiguous.
+    assign in_ready = (state == ST_ABSORB) && !perm_busy && !out_valid;
+    assign bulk_ready = (state == ST_ABSORB) && !perm_busy && !out_valid;
     assign sponge_state = perm_state_out;
     assign permutation_start = perm_start;
+`ifdef FORMAL
+    assign formal_perm_busy = perm_busy;
+`endif
 
-    keccak_f1600 #(.RPC(RPC), .IN_PLACE(1)) u_keccak (
+    keccak_f1600 #(
+        .RPC(RPC), .IN_PLACE(1)
+`ifdef FORMAL
+        , .FORMAL_CONTROL_ONLY(FORMAL_CONTROL_ONLY)
+`endif
+    ) u_keccak (
         .clk       (clk),
         .rst_n     (rst_n),
         .start     (perm_start),
@@ -133,7 +184,12 @@ module shake256 #(
 
             case (state)
                 ST_ABSORB: begin
-                    if (in_valid && in_ready) begin
+                    if (bulk_valid && bulk_ready) begin
+                        perm_start <= 1'b1;
+                        pending_final_pad <= 1'b0;
+                        lane_index <= '0;
+                        state <= ST_WAIT_FINAL;
+                    end else if (in_valid && in_ready) begin
                         if (in_last) begin
                             perm_start <= 1'b1;
                             if (lane_index == LAST_LANE && in_bytes == 4'd8) begin

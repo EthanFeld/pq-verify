@@ -1,0 +1,18 @@
+[options]
+mode bmc
+depth 128
+multiclock on
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal -sv hs_props.sv fv_ht_verify.sv ht_verify.sv wots_verify.sv xmss_verify.sv
+prep -top fv_ht_verify
+
+[files]
+../common/hs_props.sv
+fv_ht_verify.sv
+../../rtl/slh/ht_verify.sv
+../../rtl/slh/wots_verify.sv
+../../rtl/slh/xmss_verify.sv

@@ -1,0 +1,18 @@
+[options]
+mode bmc
+depth 128
+multiclock on
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal -D FORMAL -sv fv_shake_bulk.sv shake256.sv keccak_round.sv keccak_f1600.sv
+chparam -set RPC 1 -set BULK_BYTES 64 fv_shake_bulk
+prep -top fv_shake_bulk
+
+[files]
+fv_shake_bulk.sv
+shake256.sv ../../rtl/keccak/shake256.sv
+keccak_round.sv ../../rtl/keccak/keccak_round.sv
+keccak_f1600.sv ../../rtl/keccak/keccak_f1600.sv

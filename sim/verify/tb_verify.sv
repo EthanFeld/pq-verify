@@ -33,6 +33,16 @@ module tb_verify;
     localparam integer TOP_LEVEL_SETUP_CYCLES = 8;
     logic hmsg_stage_active = 0, fors_stage_active = 0, ht_stage_active = 0;
     localparam integer FORS_EXPECTED_PERMS = 185;
+    integer hash_call_count [0:4];
+    integer hash_absorb_total [0:4];
+    integer hash_permute_total [0:4];
+    integer hash_response_total [0:4];
+    integer hash_idle_total [0:4];
+    integer hash_call_active = 0, hash_last_input = 0, hash_gap_active = 0;
+    integer hash_current_kind = 0, hash_last_kind = 0, hash_have_last_kind = 0;
+    integer hash_gap_cycles = 0;
+    integer hash_call_absorb = 0, hash_call_permute = 0;
+    integer hash_call_response = 0, hash_call_idle = 0;
 
     slh_verify_top #(.RPC(RPC), .SCRATCH_STYLE(SCRATCH_STYLE)) dut (
         .clk(clk), .rst_n(rst_n), .start(start), .start_ready(start_ready),
@@ -134,6 +144,120 @@ module tb_verify;
         end
     end
 
+    // Exclusive per-call accounting: absorb/controller work before the final
+    // lane, Keccak busy cycles, non-busy response slack, then inter-call gap.
+    // Input and response work are kept separate from overlapping permutation.
+    always @(negedge clk) begin
+        if (!rst_n) begin
+            hash_call_active = 0;
+            hash_last_input = 0;
+            hash_gap_active = 0;
+            hash_have_last_kind = 0;
+            hash_gap_cycles = 0;
+            hash_call_absorb = 0;
+            hash_call_permute = 0;
+            hash_call_response = 0;
+            hash_call_idle = 0;
+            for (integer kind_index = 0; kind_index < 5; kind_index = kind_index + 1) begin
+                hash_call_count[kind_index] = 0;
+                hash_absorb_total[kind_index] = 0;
+                hash_permute_total[kind_index] = 0;
+                hash_response_total[kind_index] = 0;
+                hash_idle_total[kind_index] = 0;
+            end
+        end else if (hash_call_active) begin
+            if (hash_current_kind == 4) begin
+                if (dut.u_shared_shake256.u_keccak.busy)
+                    hash_call_permute = hash_call_permute + 1;
+                if (!hash_last_input) begin
+                    if (!dut.u_shared_shake256.u_keccak.busy)
+                        hash_call_absorb = hash_call_absorb + 1;
+                    if (dut.hmsg_shake_in_valid && dut.hmsg_shake_in_ready
+                            && dut.hmsg_shake_in_last)
+                        hash_last_input = 1;
+                end else if (!dut.u_shared_shake256.u_keccak.busy && !dut.hmsg_done) begin
+                    hash_call_response = hash_call_response + 1;
+                end
+            end else begin
+                if (dut.u_shared_shake256.u_keccak.busy)
+                    hash_call_permute = hash_call_permute + 1;
+                if (!hash_last_input) begin
+                    if (!dut.u_shared_shake256.u_keccak.busy)
+                        hash_call_absorb = hash_call_absorb + 1;
+                    if (dut.shake_shared_in_valid && dut.shake_shared_in_ready
+                            && dut.shake_shared_in_last)
+                        hash_last_input = 1;
+                    if (dut.thash_shake_bulk_valid && dut.thash_shake_bulk_ready)
+                        hash_last_input = 1;
+                end else if (!dut.u_shared_shake256.u_keccak.busy
+                        && !dut.hash_rsp_valid) begin
+                    hash_call_response = hash_call_response + 1;
+                end
+            end
+
+            if ((hash_current_kind == 4 && dut.hmsg_done)
+                    || (hash_current_kind != 4 && dut.hash_rsp_valid)) begin
+                hash_call_response = hash_call_response + 1;
+                hash_call_count[hash_current_kind] = hash_call_count[hash_current_kind] + 1;
+                hash_absorb_total[hash_current_kind] =
+                    hash_absorb_total[hash_current_kind] + hash_call_absorb;
+                hash_permute_total[hash_current_kind] =
+                    hash_permute_total[hash_current_kind] + hash_call_permute;
+                hash_response_total[hash_current_kind] =
+                    hash_response_total[hash_current_kind] + hash_call_response;
+                hash_idle_total[hash_current_kind] =
+                    hash_idle_total[hash_current_kind] + hash_call_idle;
+                hash_last_kind = hash_current_kind;
+                hash_have_last_kind = 1;
+                hash_call_active = 0;
+                hash_gap_active = 1;
+                hash_gap_cycles = 0;
+                // E3 lets WOTS accept the next chain hash on the response
+                // cycle. Close the completed call above, then start the new
+                // call on that same sampled cycle so its handshake and later
+                // permutation remain in the exclusive cycle ledger.
+                if (hash_current_kind != 4 && dut.hash_req_valid && dut.hash_req_ready) begin
+                    hash_current_kind = dut.hash_kind;
+                    hash_call_active = 1;
+                    hash_last_input = 0;
+                    // The accepted request shares the just-counted response
+                    // cycle; its first exclusive absorb cycle is next cycle.
+                    hash_call_absorb = 0;
+                    hash_call_permute = 0;
+                    hash_call_response = 0;
+                    hash_call_idle = 0;
+                    hash_gap_active = 0;
+                    hash_gap_cycles = 0;
+                end
+            end
+        end else if (dut.hmsg_start) begin
+            hash_current_kind = 4;
+            hash_call_active = 1;
+            hash_last_input = 0;
+            hash_call_absorb = 1;
+            hash_call_permute = 0;
+            hash_call_response = 0;
+            hash_call_idle = hash_gap_active ? hash_gap_cycles : 0;
+            hash_gap_active = 0;
+            hash_gap_cycles = 0;
+        end else if (dut.start && dut.start_ready) begin
+            hash_gap_active = 1;
+            hash_gap_cycles = 0;
+        end else if (dut.hash_req_valid && dut.hash_req_ready) begin
+            hash_current_kind = dut.hash_kind;
+            hash_call_active = 1;
+            hash_last_input = 0;
+            hash_call_absorb = 1;
+            hash_call_permute = 0;
+            hash_call_response = 0;
+            hash_call_idle = hash_gap_active ? hash_gap_cycles : 0;
+            hash_gap_active = 0;
+            hash_gap_cycles = 0;
+        end else if (hash_gap_active) begin
+            hash_gap_cycles = hash_gap_cycles + 1;
+        end
+    end
+
     initial begin
         message_length = MSG_BYTES;
         context_length = CTX_BYTES;
@@ -207,7 +331,24 @@ module tb_verify;
         while (!done) begin
             @(posedge clk); #1;
             waits = waits + 1;
-            if (waits > 1000000) $fatal(1, "verifier watchdog state=%0d", dut.state);
+            if (waits > 1000000)
+                $fatal(1, "verifier watchdog top=%0d ht=%0d wots=%0d chain=%0d byte=%0d prefetch=%0d/%0d issue=%0d count=%0d capture=%0d pending=%0d xmss=%0d level=%0d word=%0d sig_rd=%0d addr=%0d sig_valid=%0d hash_req=%0d hash_rsp=%0d cycles=%0d",
+                       dut.state, dut.u_ht_verify.state,
+                       dut.u_ht_verify.u_wots_verify.state,
+                       dut.u_ht_verify.u_wots_verify.chain_number,
+                       dut.u_ht_verify.u_wots_verify.byte_index,
+                       dut.u_ht_verify.u_wots_verify.prefetch_valid,
+                       dut.u_ht_verify.u_wots_verify.prefetch_chain_number,
+                       dut.u_ht_verify.u_wots_verify.prefetch_issue_done,
+                       dut.u_ht_verify.u_wots_verify.prefetch_issue_count,
+                       dut.u_ht_verify.u_wots_verify.prefetch_capture_count,
+                       dut.u_ht_verify.u_wots_verify.prefetch_capture_pending,
+                       dut.u_ht_verify.u_xmss_verify.state,
+                       dut.u_ht_verify.u_xmss_verify.level,
+                       dut.u_ht_verify.u_xmss_verify.sig_word_index,
+                       dut.stage_sig_rd_en, dut.stage_sig_rd_addr,
+                       dut.stage_sig_valid, dut.hash_req_valid,
+                       dut.hash_rsp_valid, cycles);
         end
         if (valid !== (expected_valid != 0)) $fatal(1, "verdict mismatch");
         if (perms != expected_perms) $fatal(1, "permutation count got=%0d expected=%0d", perms, expected_perms);
@@ -220,6 +361,14 @@ module tb_verify;
             $fatal(1, "cycle accounting mismatch: hmsg=%0d fors=%0d hypertree=%0d top=%0d total=%0d",
                    hmsg_stage_cycles, fors_stage_cycles, ht_stage_cycles,
                    TOP_LEVEL_SETUP_CYCLES, cycles);
+        for (integer kind_index = 0; kind_index < 5; kind_index = kind_index + 1)
+            $display("HASH_TOTAL tc=%0d kind=%0d calls=%0d absorb=%0d permutation=%0d response=%0d idle=%0d",
+                     test_id, kind_index, hash_call_count[kind_index],
+                     hash_absorb_total[kind_index], hash_permute_total[kind_index],
+                     hash_response_total[kind_index],
+                     hash_idle_total[kind_index]
+                         + ((hash_gap_active && hash_have_last_kind
+                             && hash_last_kind == kind_index) ? hash_gap_cycles : 0));
         $display("PASS verify tc=%0d RPC=%0d valid=%0d cycles=%0d perms=%0d", test_id, RPC, valid, cycles, perms);
         $finish;
     end

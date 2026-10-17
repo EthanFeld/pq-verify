@@ -12,12 +12,12 @@ import math
 import os
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
+from tools import resolve_nextpnr, resolve_sv2v, resolve_yosys, tool_environment
 RTL = ("rtl/keccak/keccak_round.sv", "rtl/keccak/keccak_f1600.sv", "rtl/top/keccak_ooc_top.sv")
 SOURCES = (*RTL, "syn/keccak_ooc.cst", "syn/keccak_ooc.sdc")
 DEFINE = "PQ_GOWIN_LUT4"
@@ -43,22 +43,6 @@ def tool_environment(executable: Path) -> dict[str, str]:
     paths = [executable.parent, executable.parent.parent / "lib"]
     env["PATH"] = os.pathsep.join((*map(str, paths), env.get("PATH", "")))
     return env
-
-
-def find_tool(variable: str, name: str, preferred: Path) -> Path:
-    value = os.environ.get(variable)
-    if value:
-        found = shutil.which(value) or (value if Path(value).is_file() else None)
-    else:
-        found = None
-    if not found and (not value or value in (name, name + ".exe")):
-        filename = name + (".exe" if os.name == "nt" else "")
-        candidate = next((path for path in (preferred / "bin" / filename, preferred / filename)
-                          if path.is_file()), None)
-        found = str(candidate) if candidate else shutil.which(name)
-    if not found:
-        raise ValueError(f"{variable}: executable not found: {value or name}")
-    return Path(found).resolve()
 
 
 def write_json(path: Path, data: dict) -> None:
@@ -289,11 +273,10 @@ def main() -> int:
     hashes = source_hashes()
     try:
         if not args.collect_only:
-            suite = Path(os.environ.get("YOSYSHQ_ROOT", r"C:\oss-cad-suite\oss-cad-suite"))
-            newer = ROOT / ".tools/oss-cad-20261016/oss-cad-suite"
-            yosys = find_tool("YOSYS", "yosys", suite)
-            nextpnr = find_tool("NEXTPNR", "nextpnr-himbaechel", newer if newer.is_dir() else suite)
-            sv2v = find_tool("SV2V", "sv2v", ROOT / ".tools/sv2v/sv2v-Windows")
+            env = tool_environment()
+            yosys = Path(resolve_yosys(env))
+            nextpnr = Path(resolve_nextpnr(env))
+            sv2v = Path(resolve_sv2v(env))
             tools = {name: {"path": str(executable), "version": version(executable)}
                      for name, executable in (("yosys", yosys), ("nextpnr", nextpnr), ("sv2v", sv2v))}
             for rpc in dict.fromkeys(args.rpc):
@@ -312,7 +295,7 @@ def main() -> int:
                                                "all_lut4_v3" if balance_pins else "all_lut4_v2",
                                  "router": router, "placer_density": density,
                                  "clock_constraint_mhz": 27.0,
-                                 # Legacy field also controls timing-driven routing.
+                                 # This option also controls timing-driven routing.
                                  "timing_driven_placement": timing_driven,
                                  "placer": args.placer, "router2_alternate_weights": args.router2_alt_weights,
                                  "seed": args.seed,

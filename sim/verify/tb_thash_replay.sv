@@ -18,6 +18,7 @@ module tb_thash_replay;
     wire [15:0] src_rd_addr;
     logic src_valid = 0;
     logic [7:0] src_byte = 0;
+    logic [31:0] src_word = 0;
     wire shake_in_valid, shake_in_last;
     wire shake_in_ready;
     wire [63:0] shake_in_data;
@@ -38,9 +39,12 @@ module tb_thash_replay;
         .req_src_addr(req_src_addr), .req_count(req_count), .pk_seed(pk_seed),
         .req_pair(req_pair), .src_rd_en(src_rd_en), .src_rd_sel(src_rd_sel),
         .src_rd_addr(src_rd_addr), .src_valid(src_valid), .src_byte(src_byte),
+        .src_word(src_word),
         .shake_in_valid(shake_in_valid), .shake_in_ready(shake_in_ready),
         .shake_in_data(shake_in_data), .shake_in_bytes(shake_in_bytes),
-        .shake_in_last(shake_in_last), .shake_out_valid(shake_out_valid),
+        .shake_in_last(shake_in_last), .shake_bulk_valid(),
+        .shake_bulk_ready(1'b0), .shake_bulk_lanes(), .shake_bulk_bytes(),
+        .shake_out_valid(shake_out_valid),
         .shake_out(shake_out), .rsp_valid(rsp_valid), .rsp_node(rsp_node)
     );
 
@@ -48,12 +52,19 @@ module tb_thash_replay;
         if (!rst_n) begin
             src_valid <= 0;
             src_byte <= 0;
+            src_word <= 0;
         end else begin
             src_valid <= src_rd_en;
             if (src_rd_en) begin
-                if (src_rd_addr < source_base || src_rd_addr >= source_base + MESSAGE_BYTES)
+                if (src_rd_addr < source_base || src_rd_addr + 4 > source_base + MESSAGE_BYTES)
                     $fatal(1, "source read outside replay message: %0d", src_rd_addr);
                 src_byte <= source_memory[src_rd_addr - source_base];
+                src_word <= {
+                    source_memory[int'(src_rd_addr) - source_base],
+                    source_memory[int'(src_rd_addr) - source_base + 1],
+                    source_memory[int'(src_rd_addr) - source_base + 2],
+                    source_memory[int'(src_rd_addr) - source_base + 3]
+                };
             end
         end
     end
@@ -69,11 +80,11 @@ module tb_thash_replay;
             for (integer byte_index = 0; byte_index < MESSAGE_BYTES; byte_index = byte_index + 1)
                 source_memory[byte_index] = vectors[index][4607 - byte_index * 8 -: 8];
 
-            req_kind = vectors[index][5011:5008];
+            req_kind = vectors[index][5009:5008];
             req_count = vectors[index][5007:4992];
             req_adrs = vectors[index][4991:4736];
             pk_seed = vectors[index][4735:4608];
-            req_src_addr = source_base;
+            req_src_addr = 16'(source_base);
             req_pair = vectors[index][4607 -: 256];
             if (req_kind < 2)
                 case (index % 3)
@@ -94,7 +105,11 @@ module tb_thash_replay;
             while (!rsp_valid) begin
                 @(negedge clk);
                 watchdog = watchdog + 1;
-                if (watchdog > 1000000) $fatal(1, "thash replay watchdog index=%0d", index);
+                if (watchdog > 1000000) $fatal(1,
+                    "thash replay watchdog index=%0d state=%0d bytes=%0d issue=%0d valid=%0b rd=%0b word=%0b fill=%0d total=%0d shake=%0b/%0b/%0b",
+                    index, dut.state, dut.byte_pos, dut.src_issue_pos, src_valid, src_rd_en,
+                    dut.word_source_mode, dut.lane_fill, dut.total_bytes,
+                    shake_in_valid, shake_in_ready, shake_in_last);
             end
             if (rsp_node !== vectors[index][127:0])
                 $fatal(1, "thash mismatch index=%0d kind=%0d bytes=%0d got=%h expected=%h",

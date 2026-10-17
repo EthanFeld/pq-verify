@@ -1,0 +1,3 @@
+# Target: shake256
+# shake_accepts_input_while_permuting: Drive in_ready high unconditionally; expected kill: input backpressure assertion during permutation.
+# shake_response_sticks_high: Retain out_valid instead of clearing it each cycle; expected kill: one response per message assertion.

@@ -8,24 +8,17 @@ import hashlib
 import os
 from pathlib import Path
 import random
-import shutil
 import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from model.keccak_ref import keccak_f1600  # noqa: E402
+from scripts.tools import resolve_cxx, resolve_iverilog, resolve_vvp, tool_environment as _tool_environment  # noqa: E402
 
 
 def tool_environment() -> dict[str, str]:
-    env = os.environ.copy()
-    oss = Path(env.get("YOSYSHQ_ROOT", r"C:\oss-cad-suite\oss-cad-suite"))
-    if oss.is_dir():
-        env["PATH"] = os.pathsep.join((str(oss / "bin"), str(oss / "lib"), env.get("PATH", "")))
-    local_icarus = ROOT / ".tools/iverilog/bin"
-    if local_icarus.is_dir():
-        env["PATH"] = str(local_icarus) + os.pathsep + env.get("PATH", "")
-    return env
+    return _tool_environment()
 
 
 def write_hex(path: Path, values: list[int], digits: int) -> None:
@@ -78,8 +71,17 @@ def shake_vectors(directory: Path) -> tuple[dict[str, Path], int, int]:
 def run_logged(command: list[str], log: Path, env: dict[str, str], timeout: int = 300,
                require_pass: bool = False,
                allow_output_on_crash: Path | None = None) -> None:
+    run_env = env
+    executable = Path(command[0])
+    if executable.parent.name == "verilator_model":
+        run_env = dict(env)
+        compiler_bin = str(Path(resolve_cxx(run_env)).resolve().parent)
+        path_parts = run_env.get("PATH", "").split(os.pathsep)
+        run_env["PATH"] = os.pathsep.join(
+            [compiler_bin] + [part for part in path_parts if part.casefold() != compiler_bin.casefold()]
+        )
     with log.open("w", encoding="utf-8") as stream:
-        result = subprocess.run(command, cwd=ROOT, env=env, stdout=stream, stderr=subprocess.STDOUT, timeout=timeout)
+        result = subprocess.run(command, cwd=ROOT, env=run_env, stdout=stream, stderr=subprocess.STDOUT, timeout=timeout)
     output = log.read_text(encoding="utf-8", errors="replace")
     if result.returncode:
         # Some bundled Windows Icarus builds fault during process teardown after
@@ -112,13 +114,13 @@ def main() -> int:
     if args.cases < 1:
         parser.error("--cases must be positive")
     env = tool_environment()
-    local_msys_bin = Path(r"C:\msys64\mingw64\bin")
-    if local_msys_bin.is_dir():
-        env["PATH"] = str(local_msys_bin) + os.pathsep + env.get("PATH", "")
-    compiler = shutil.which(env.get("IVERILOG", "iverilog"), path=env["PATH"])
-    runtime = shutil.which(env.get("VVP", "vvp"), path=env["PATH"])
-    if args.simulator == "icarus" and (not compiler or not runtime):
-        parser.error("Icarus Verilog (iverilog and vvp) is required")
+    try:
+        compiler = resolve_iverilog(env)
+        runtime = resolve_vvp(env)
+    except FileNotFoundError as exc:
+        if args.simulator == "icarus":
+            parser.error(str(exc))
+        compiler, runtime = "", ""
     rtl = [str(ROOT / "rtl/keccak" / name) for name in ("keccak_round.sv", "keccak_f1600.sv", "shake256.sv")]
     try:
         for suite in ("keccak", "shake"):

@@ -1,0 +1,14 @@
+[options]
+mode prove
+depth 4
+multiclock on
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal -sv fv_smoke.sv
+prep -top fv_smoke
+
+[files]
+fv_smoke.sv

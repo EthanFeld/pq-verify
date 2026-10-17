@@ -1,0 +1,19 @@
+[options]
+mode bmc
+depth 4096
+multiclock on
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal -sv fv_thash.sv thash.sv shake256.sv keccak_round.sv keccak_f1600.sv
+chparam -set KIND 0 -set COUNT 16 fv_thash
+prep -top fv_thash
+
+[files]
+fv_thash.sv
+thash.sv ../../rtl/slh/thash.sv
+shake256.sv ../../rtl/keccak/shake256.sv
+keccak_round.sv ../../rtl/keccak/keccak_round.sv
+keccak_f1600.sv ../../rtl/keccak/keccak_f1600.sv

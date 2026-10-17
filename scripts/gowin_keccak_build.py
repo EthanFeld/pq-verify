@@ -9,13 +9,13 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import sys
 import time
 
 
 ROOT = Path(__file__).resolve().parents[1]
+from tools import resolve_gw_sh, resolve_sv2v
 SOURCES = (
     "rtl/keccak/keccak_round.sv",
     "rtl/keccak/keccak_f1600.sv",
@@ -156,16 +156,8 @@ def main() -> int:
             return 0
         if manifest.exists() or bitstream.exists():
             raise ValueError("existing fit preserved; choose a new --build-dir")
-        gowin = Path(os.environ.get("GOWIN_HOME", r"C:\Gowin\Gowin_V1.9.11.03_Education_x64"))
-        shell = gowin / "IDE/bin/gw_sh.exe"
-        if not shell.is_file():
-            raise ValueError(f"Gowin command-line tool missing: {shell}")
-        local_sv2v = ROOT / ".tools/sv2v/sv2v-Windows/sv2v.exe"
-        sv2v = os.environ.get("SV2V") or shutil.which("sv2v")
-        if not sv2v and local_sv2v.is_file():
-            sv2v = str(local_sv2v)
-        if not sv2v:
-            raise ValueError("sv2v is required")
+        shell = Path(resolve_gw_sh())
+        sv2v = resolve_sv2v()
         build.mkdir(parents=True, exist_ok=True)
         hashes = source_hashes()
         converted = build / "keccak_ooc.v"

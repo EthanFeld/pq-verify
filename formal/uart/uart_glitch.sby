@@ -1,0 +1,15 @@
+[options]
+mode bmc
+depth 64
+multiclock on
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal -sv fv_uart_glitch.sv uart_rx.sv
+prep -top fv_uart_glitch
+
+[files]
+fv_uart_glitch.sv
+../../rtl/io/uart_rx.sv

@@ -1,0 +1,15 @@
+[options]
+mode cover
+depth 2
+multiclock on
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal -sv fv_keccak_round_cover.sv
+chparam -set RPC 1 fv_keccak_round_cover
+prep -top fv_keccak_round_cover
+
+[files]
+fv_keccak_round_cover.sv

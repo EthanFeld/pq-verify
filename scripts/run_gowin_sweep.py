@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -22,14 +23,10 @@ def run(command: list[str]) -> bool:
 
 def reusable_manifest(mode: str, rpc: int, style: int | None,
                       expected_sources: dict[str, str]) -> Path | None:
-    if mode == "keccak":
-        pattern = f"gowin_keccak_rpc{rpc}_*/gowin_synthesis_manifest.json"
-    else:
-        pattern = f"gowin_rpc{rpc}_scratch{style}*/gowin_synthesis_manifest.json"
     current_rtl = {name: digest for name, digest in expected_sources.items()
                    if name.startswith("rtl/")}
     candidates: list[Path] = []
-    for path in (ROOT / "build").glob(pattern):
+    for path in (ROOT / "build").glob("gowin_*/gowin_synthesis_manifest.json"):
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
@@ -91,8 +88,10 @@ def main() -> int:
             build_dir = ROOT / f"build/gowin_keccak_rpc{rpc}_p{args.place_option}r{args.route_option}_v2"
             build_script = "scripts/gowin_keccak_build.py"
         else:
-            suffix = ("_synramstyle" if args.place_option == 0 and args.route_option == 0
-                      else f"_p{args.place_option}r{args.route_option}_synramstyle")
+            source_tag = hashlib.sha256(
+                json.dumps(expected_sources, sort_keys=True).encode("utf-8")
+            ).hexdigest()[:10]
+            suffix = f"_p{args.place_option}r{args.route_option}_src{source_tag}"
             build_dir = ROOT / f"build/gowin_rpc{rpc}_scratch{style}{suffix}"
             build_script = "scripts/gowin_build.py"
         failure_manifest = build_dir / "gowin_failure_manifest.json"

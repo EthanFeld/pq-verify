@@ -1,0 +1,17 @@
+[options]
+mode bmc
+depth 128
+multiclock on
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal -sv fv_uart_roundtrip.sv uart_tx.sv uart_rx.sv
+chparam -set TX_CLKS 4 -set RX_CLKS 4 fv_uart_roundtrip
+prep -top fv_uart_roundtrip
+
+[files]
+fv_uart_roundtrip.sv
+../../rtl/io/uart_tx.sv
+../../rtl/io/uart_rx.sv

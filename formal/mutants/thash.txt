@@ -1,0 +1,3 @@
+# Target: thash
+# thash_marks_every_lane_final: Assert in_last for every accepted lane; expected kill: single-final-lane and byte-accounting assertions.
+# thash_ready_reasserts_while_busy: Assert req_ready throughout the hash-wait state; expected kill: no-request-while-outstanding assertion.

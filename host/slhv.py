@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import json
 from pathlib import Path
 import sys
 import time
@@ -24,6 +23,10 @@ from proto import (
     encode_verify,
 )
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from model.vector_corpus import load_vector_cases  # noqa: E402
+
 
 def parse_bytes(value: str, field: str) -> bytes:
     try:
@@ -33,9 +36,7 @@ def parse_bytes(value: str, field: str) -> bytes:
 
 
 def load_vectors(path: Path, tc_id: int | None) -> list[dict[str, Any]]:
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(raw, list):
-        raise ValueError("filtered vector file must contain a JSON array")
+    raw = load_vector_cases(path)
     vectors = [row for row in raw if tc_id is None or row.get("tcId") == tc_id]
     if not vectors:
         raise ValueError(f"no vector found for tcId {tc_id}" if tc_id else "no vectors found")
@@ -121,7 +122,13 @@ def main() -> int:
     if args.baud <= 0:
         parser.error("--baud must be positive")
     if not args.dry_run and not args.port:
-        parser.error("--port is required unless --dry-run is used")
+        try:
+            from serial.tools import list_ports  # type: ignore[import-not-found]
+        except ImportError:
+            parser.error("--port is required; install pyserial to list available ports")
+        candidates = [f"{port.device} ({port.description})" for port in list_ports.comports()]
+        available = "; ".join(candidates) if candidates else "none detected"
+        parser.error(f"--port is required; available serial ports: {available}")
 
     try:
         vectors = load_vectors(args.vectors, args.tc)

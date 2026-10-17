@@ -1,0 +1,3 @@
+# Target: keccak_control
+# round_count_off_by_one: Change >=24 to >24; expected kill: round counter bound/exact done latency.
+# done_sticks_high: Hold done instead of clearing it; expected kill: single-cycle done pulse.
