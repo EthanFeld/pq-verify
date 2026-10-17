@@ -1,0 +1,12 @@
+IO_LOC "clk" 4;
+IO_PORT "clk" IO_TYPE=LVCMOS33;
+IO_LOC "start" 69;
+IO_PORT "start" IO_TYPE=LVCMOS33;
+IO_LOC "rst_n" 70;
+IO_PORT "rst_n" IO_TYPE=LVCMOS33;
+IO_LOC "busy" 15;
+IO_PORT "busy" IO_TYPE=LVCMOS33;
+IO_LOC "done" 16;
+IO_PORT "done" IO_TYPE=LVCMOS33;
+IO_LOC "pin_out" 17;
+IO_PORT "pin_out" IO_TYPE=LVCMOS33;

@@ -1,0 +1,43 @@
+# Generated build outputs
+/build/
+**/build/
+/obj_dir/
+/sim_build/
+/.tools/
+/results.xml
+/coverage.xml
+**/results.xml
+.coverage
+*.vcd
+*.fst
+
+# Python caches and environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Generated datasets and reports
+/vectors/acvp/
+/vectors/shake128s/traces/
+/bench/results.csv
+/bench/predicted.csv
+/bench/hw_results.csv
+/bench/measurements.csv
+/bench/gowin_measurements.csv
+/bench/keccak_gowin_measurements.csv
+/bench/keccak_measurements.csv
+/bench/verify_cycles.csv
+/bench/stage_cycles.csv
+/bench/plots/*.svg
+
+# Local-only development notes
+/docs/progress.md
+
+# User-supplied planning and generated scratch files
+/Spec.mf.md
+/llm_artifacts/
+*.llm.md

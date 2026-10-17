@@ -1,0 +1,3 @@
+cocotb>=2.0,<3
+pytest>=8,<9
+pyserial>=3.5,<4

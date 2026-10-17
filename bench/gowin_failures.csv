@@ -1,0 +1,5 @@
+config,rpc,scratch_style,place_option,route_option,failure_code,failure,gowin_fit_pack_seconds,synth_lut,synth_registers,synth_bsram,synth_ssram,reported_logic,logic_limit
+rpc1_scratch2,1,2,0,0,PR0003,Failed to place with '3411 REG(s) unPlaced ' in the device 'GW2AR-18C-QFN88-8',186.079,15845,14864,4,,,
+rpc2_scratch0,2,0,0,0,PR0004,DesRoute failed. There are total 0 unrouted nets,432.718,15793,6639,5,,,
+rpc3_scratch0,3,0,0,0,PR0004,DesRoute failed. There are total 0 unrouted nets,619.993,19669,6640,5,,,
+rpc4_scratch0,4,0,0,0,RP0006,"The number(23721(23261 LUTs, 460 ALUs, 0 ROM16s, 0 SSRAMs)) of logic in the design exceeds the resource limit(20736) of current device",192.417,,,,,23721,20736
