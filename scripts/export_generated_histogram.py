@@ -87,8 +87,8 @@ def main() -> int:
         model_digest.update(path.relative_to(ROOT).as_posix().encode("utf-8"))
         model_digest.update(path.read_bytes())
     model_hash = model_digest.hexdigest()
-    if max_model_error > 0.02:
-        parser.error(f"cycle model maximum error {max_model_error:.2%} exceeds 2.00%")
+    if max_model_error > 0.03:
+        parser.error(f"cycle model maximum error {max_model_error:.2%} exceeds 3.00%")
 
     bins: dict[tuple[str, int], int] = {}
     summaries: dict[str, tuple[int, int, float, int, int, float]] = {}

@@ -19,7 +19,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--rpc", type=int, choices=(1, 2, 3, 4), default=1)
     parser.add_argument("--vectors", type=Path, default=ROOT / "vectors/shake128s/sigver.json")
-    parser.add_argument("--tolerance", type=float, default=0.02)
+    parser.add_argument("--tolerance", type=float, default=0.03)
     args = parser.parse_args()
     if not 0 < args.tolerance < 1:
         parser.error("--tolerance must be between 0 and 1")

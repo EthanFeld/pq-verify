@@ -25,7 +25,8 @@ venv/
 /vectors/shake128s/traces/
 /bench/predicted.csv
 /bench/*.csv
-/bench/plots/
+/bench/plots/*
+!/bench/plots/hash_call_cycle_breakdown.svg
 /bench/evidence/gowin_e*/
 /bench/evidence/gowin_rpc1/
 /bench/evidence/keccak_mapping/

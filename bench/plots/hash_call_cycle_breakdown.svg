@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="480" viewBox="0 0 920 480">
+<rect width="100%" height="100%" fill="#fff"/>
+<text x="460" y="30" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="600">Mean cycles per hash call</text>
+<text x="460" y="50" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#555">RPC1 · exclusive absorb, permutation, response, and controller gaps</text>
+<line x1="92" y1="386.0" x2="892" y2="386.0" stroke="#ddd"/>
+<text x="82" y="390.0" text-anchor="end" font-family="sans-serif" font-size="11" fill="#444">0</text>
+<line x1="92" y1="62.0" x2="892" y2="62.0" stroke="#ddd"/>
+<text x="82" y="66.0" text-anchor="end" font-family="sans-serif" font-size="11" fill="#444">1,000</text>
+<rect x="158.7" y="385.6" width="80" height="0.4" fill="#3b82f6"/>
+<rect x="158.7" y="377.9" width="80" height="7.8" fill="#f59e0b"/>
+<rect x="158.7" y="376.9" width="80" height="1.0" fill="#10b981"/>
+<rect x="158.7" y="376.6" width="80" height="0.3" fill="#a78bfa"/>
+<text x="198.7" y="410" text-anchor="middle" font-family="sans-serif" font-size="12">F</text>
+<text x="198.7" y="369.6" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">28.9</text>
+<rect x="305.3" y="385.4" width="80" height="0.6" fill="#3b82f6"/>
+<rect x="305.3" y="377.6" width="80" height="7.8" fill="#f59e0b"/>
+<rect x="305.3" y="376.6" width="80" height="1.0" fill="#10b981"/>
+<rect x="305.3" y="374.0" width="80" height="2.6" fill="#a78bfa"/>
+<text x="345.3" y="410" text-anchor="middle" font-family="sans-serif" font-size="12">H</text>
+<text x="345.3" y="367.0" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">37.1</text>
+<rect x="452.0" y="363.3" width="80" height="22.7" fill="#3b82f6"/>
+<rect x="452.0" y="340.0" width="80" height="23.3" fill="#f59e0b"/>
+<rect x="452.0" y="338.4" width="80" height="1.6" fill="#10b981"/>
+<rect x="452.0" y="337.1" width="80" height="1.3" fill="#a78bfa"/>
+<text x="492.0" y="410" text-anchor="middle" font-family="sans-serif" font-size="12">T_k</text>
+<text x="492.0" y="330.1" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">151.0</text>
+<rect x="598.7" y="335.1" width="80" height="50.9" fill="#3b82f6"/>
+<rect x="598.7" y="296.3" width="80" height="38.9" fill="#f59e0b"/>
+<rect x="598.7" y="295.3" width="80" height="1.0" fill="#10b981"/>
+<rect x="598.7" y="293.8" width="80" height="1.4" fill="#a78bfa"/>
+<text x="638.7" y="410" text-anchor="middle" font-family="sans-serif" font-size="12">T_len</text>
+<text x="638.7" y="286.8" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">284.5</text>
+<rect x="745.3" y="166.9" width="80" height="219.1" fill="#3b82f6"/>
+<rect x="745.3" y="125.0" width="80" height="41.9" fill="#f59e0b"/>
+<rect x="745.3" y="123.7" width="80" height="1.3" fill="#10b981"/>
+<rect x="745.3" y="122.1" width="80" height="1.6" fill="#a78bfa"/>
+<text x="785.3" y="410" text-anchor="middle" font-family="sans-serif" font-size="12">H_msg</text>
+<text x="785.3" y="115.1" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#333">814.6</text>
+<rect x="92" y="449" width="14" height="14" fill="#3b82f6"/>
+<text x="112" y="461" font-family="sans-serif" font-size="12">absorb</text>
+<rect x="246" y="449" width="14" height="14" fill="#f59e0b"/>
+<text x="266" y="461" font-family="sans-serif" font-size="12">permutation</text>
+<rect x="400" y="449" width="14" height="14" fill="#10b981"/>
+<text x="420" y="461" font-family="sans-serif" font-size="12">response</text>
+<rect x="554" y="449" width="14" height="14" fill="#a78bfa"/>
+<text x="574" y="461" font-family="sans-serif" font-size="12">idle</text>
+</svg>

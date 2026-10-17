@@ -1,5 +1,9 @@
 PYTHON ?= python
+ifeq ($(OS),Windows_NT)
 VERILATOR ?= verilator
+else
+VERILATOR ?= verilator_bin
+endif
 SV2V ?= sv2v
 YOSYS ?= yosys
 NEXTPNR ?= nextpnr-himbaechel

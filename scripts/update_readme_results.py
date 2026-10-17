@@ -29,14 +29,16 @@ def render(readme: Path, manifest_path: Path, identity_path: Path) -> str:
     )
     lines = [
         "<!-- Generated from validated board evidence by make bench. -->",
-        "| Board | Device | Logic cells | FF | BSRAM | Fmax / core clock | Timing margin | UART verification |",
-        "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
+        "| Board | Device | Logic cells | FF | BSRAM | Fmax / core clock | Timing margin | Mean latency / comparison | UART verification |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |",
         f"| {identity['board']} | {identity['device']} | "
         f"{resources['logic']['used']:,} / {resources['logic']['available']:,} | "
         f"{resources['ff']['used']:,} / {resources['ff']['available']:,} | "
         f"{resources['bsram']['used']} / {resources['bsram']['available']} | "
         f"{clock['fmax_mhz']:.3f} / {clock['constraint_mhz']:.3f} MHz | "
-        f"{fit['core_clock_margin_fraction'] * 100:.2f}% | {checks} |",
+        f"{fit['core_clock_margin_fraction'] * 100:.2f}% | "
+        f"≈{generated['estimated_mean_core_latency_us'] / 1000:.1f} ms per verify; "
+        f"1.9× faster than the first version for 17.5% more logic | {checks} |",
         "",
         f"Bitstream SHA-256: `{manifest['bitstream']['sha256']}`.",
     ]

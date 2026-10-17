@@ -8,12 +8,14 @@ SystemVerilog SLH-DSA-SHAKE-128s signature verifier for the Sipeed Tang Nano 20K
 
 <!-- bench-results:start -->
 <!-- Generated from validated board evidence by make bench. -->
-| Board | Device | Logic cells | FF | BSRAM | Fmax / core clock | Timing margin | UART verification |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| Sipeed Tang Nano 20K | GW2AR-18C | 14,504 / 20,736 | 6,718 / 15,552 | 5 / 46 | 43.212 / 38.571 MHz | 10.74% | 28/28 ACVP; 400/400 generated; 428/428 exact parity |
+| Board | Device | Logic cells | FF | BSRAM | Fmax / core clock | Timing margin | Mean latency / comparison | UART verification |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| Sipeed Tang Nano 20K | GW2AR-18C | 14,504 / 20,736 | 6,718 / 15,552 | 5 / 46 | 43.212 / 38.571 MHz | 10.74% | ≈1.7 ms per verify; 1.9× faster than the first version for 17.5% more logic | 28/28 ACVP; 400/400 generated; 428/428 exact parity |
 
 Bitstream SHA-256: `07b4830a989a5220e681666a5c10f9ea8fea7ac54981d5aa3caa3966785256a7`.
 <!-- bench-results:end -->
+
+![Mean cycle breakdown by hash-call kind](bench/plots/hash_call_cycle_breakdown.svg)
 
 The selected image passes all 28 ACVP vectors and 400 generated UART cases. Hardware verdicts, cycle counts, and permutation counts match UART-top simulation for all 428 cases. See [hardware evidence](bench/evidence/gowin_c6_board_rpc1/hardware_identity.json) and [results](docs/results.md).
 

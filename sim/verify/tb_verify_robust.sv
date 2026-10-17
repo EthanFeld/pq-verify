@@ -210,7 +210,7 @@ module tb_verify_robust;
     end
 
     initial begin
-        #5000000000;
+        #(64'd5000000000);
         $fatal(1, "global robustness watchdog");
     end
 endmodule
